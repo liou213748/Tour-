@@ -1,0 +1,1297 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tour Leader Pro | 領隊版 (完整加密版)</title>
+    <style>
+        :root { --primary-color: #075e54; --accent-color: #128c7e; --notice-bg: #fff3cd; --notice-border: #ffeeba; --alert-bg: #f8d7da; --alert-border: #dc3545; --chat-bg: #e5ddd5; --bg-light: #f0f2f5; --success-color: #28a745; --warning-color: #ffc107; }
+        body { margin: 0; font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif; background-color: var(--bg-light); height: 100vh; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+        
+        #loginOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: var(--primary-color); z-index: 9999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            padding: 20px; box-sizing: border-box; transition: opacity 0.3s ease;
+        }
+        .login-box {
+            background: white; padding: 35px 25px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            width: 100%; max-width: 380px; text-align: center;
+        }
+        .login-box h2 { color: var(--primary-color); margin-top: 0; margin-bottom: 10px; font-size: 1.6rem; font-weight: bold;}
+        .login-box p { font-size: 0.95rem; color: #555; margin-bottom: 25px; line-height: 1.5; }
+        .login-box input { 
+            width: 100%; padding: 16px; margin-bottom: 25px; border: 2px solid #ddd; border-radius: 10px; 
+            font-size: 1.3rem; box-sizing: border-box; text-align: center; letter-spacing: 5px; outline: none; transition: border-color 0.2s;
+        }
+        .login-box input:focus { border-color: var(--accent-color); }
+        .login-box button { 
+            width: 100%; background-color: var(--accent-color); color: white; border: none; 
+            padding: 16px; border-radius: 10px; font-size: 1.2rem; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(18, 140, 126, 0.3); transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .login-box button:active { transform: translateY(2px); box-shadow: none; }
+
+        #langToggleBtn {
+            position: fixed; top: 15px; right: 15px; z-index: 10000;
+            background: white; color: var(--primary-color);
+            border: 2px solid var(--primary-color); padding: 5px 12px;
+            border-radius: 20px; font-weight: bold; cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            display: none; 
+        }
+
+        .app-header { background-color: var(--primary-color); color: white; padding: 15px; text-align: center; font-size: 1.2rem; font-weight: bold; flex-shrink: 0; z-index: 100; }
+        .top-nav { display: flex; background-color: white; border-bottom: 1px solid #ddd; flex-shrink: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.05); z-index: 90; overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
+        .top-nav::-webkit-scrollbar { display: none; }
+        .nav-item { flex: 1; padding: 12px 15px; text-align: center; color: #7f8c8d; cursor: pointer; font-size: 0.95rem; font-weight: bold; min-width: 65px; }
+        .nav-item.active { color: var(--accent-color); border-bottom: 3px solid var(--accent-color); background-color: #f8f9fa; }
+        .module-container { flex: 1; display: none; background-color: white; overflow: hidden; }
+        .module-container.active { display: flex; flex-direction: column; height: 100%; }
+        #module-members, #module-itinerary, #module-rollcall, #module-finance, #module-settings, #module-emergency, #module-checklist { overflow-y: auto; }
+        .section-padding { padding: 15px; }
+        .data-card { border: 1px solid #eee; border-radius: 8px; padding: 15px; margin-bottom: 12px; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.05); position: relative; }
+        .card-row { display: flex; margin-bottom: 6px; font-size: 0.9rem; border-bottom: 1px dashed #f0f0f0; padding-bottom: 4px; }
+        .card-label { font-weight: bold; color: #555; min-width: 95px; }
+        .btn-add { background-color: var(--accent-color); color: white; border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; }
+        .btn-reset { background-color: #6c757d; color: white; border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; }
+        .action-btn { background: none; border: none; cursor: pointer; font-size: 0.85rem; font-weight: bold; padding: 4px 8px; border-radius:4px; }
+        .action-btn:active { background: #eee; }
+        .btn-edit { color: #0275d8; }
+        .btn-delete { color: #d9534f; }
+        
+        /* 團員專用繳費樣式 (保護原本Layout, 在此新增) */
+        .payment-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed #eee; }
+        .pay-box { display: flex; flex-direction: column; }
+        .pay-box label { font-size: 0.85rem; color: #888; margin-bottom: 4px; font-weight: bold; }
+        .pay-select { padding: 8px; border-radius: 6px; border: 1px solid #ddd; font-size: 0.95rem; background: #fff; }
+        .pay-select.paid { color: var(--success-color); font-weight: bold; border-color: var(--success-color); }
+        .pay-select.unpaid { color: var(--alert-border); font-weight: bold; border-color: var(--alert-border); }
+        .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 10px; }
+        .stat-item { background: #f8f9fa; padding: 10px; border-radius: 8px; text-align: center; border: 1px solid #ced4da; }
+        .stat-label { font-size: 0.85rem; color: #666; margin-bottom: 4px; font-weight: bold; }
+        .stat-value { font-size: 1.2rem; font-weight: bold; color: var(--primary-color); }
+        .progress-container { height: 8px; background: #e9ecef; border-radius: 4px; margin-top: 5px; overflow: hidden; }
+        .progress-bar { height: 100%; background: var(--success-color); border-radius: 4px; transition: width 0.3s ease; }
+
+        #module-chat { background-color: var(--chat-bg); }
+        .chat-window { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+        .message-wrapper { display: flex; flex-direction: column; max-width: 80%; }
+        .message-wrapper.self { align-self: flex-end; align-items: flex-end; }
+        .message-wrapper.other { align-self: flex-start; align-items: flex-start; }
+        .sender-name { font-size: 0.75rem; color: #555; margin-bottom: 3px; padding: 0 5px; }
+        .message-bubble { padding: 10px 15px; border-radius: 15px; font-size: 1rem; box-shadow: 0 1px 2px rgba(0,0,0,0.1); word-wrap: break-word; white-space: pre-wrap; }
+        .self .message-bubble { background-color: #dcf8c6; border-bottom-right-radius: 0; }
+        .other .message-bubble { background-color: #fff; border-bottom-left-radius: 0; }
+        .notice-style { align-self: center !important; width: 95% !important; max-width: 95% !important; }
+        .notice-style .message-bubble { background-color: var(--notice-bg); border: 2px solid var(--warning-color); color: #856404; text-align: left; font-weight: bold; font-size: 1.05rem; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .alert-style { align-self: center !important; width: 95% !important; max-width: 95% !important; }
+        .alert-style .message-bubble { background-color: var(--alert-bg); border: 2px solid var(--alert-border); color: #721c24; text-align: center; font-weight: bold; font-size: 1.05rem; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        
+        .leader-msg-controls { display: none; background: #fff; padding: 8px 10px; border-top: 1px solid #ddd; }
+        .msg-type-group { display: flex; gap: 8px; }
+        .msg-type-btn { flex: 1; padding: 8px 5px; border: 1px solid #ccc; background: white; border-radius: 8px; font-size: 0.85rem; font-weight: bold; cursor: pointer; color: #555; transition: all 0.2s; }
+        .msg-type-btn.active-text { background: var(--success-color); color: white; border-color: var(--success-color); }
+        .msg-type-btn.active-notice { background: var(--warning-color); color: #856404; border-color: #d39e00; }
+        .msg-type-btn.active-alert { background: var(--alert-border); color: white; border-color: darkred; }
+        
+        .chat-input-area { display: flex; padding: 8px; background-color: #f0f0f0; gap: 5px; flex-shrink: 0; align-items: center; padding-bottom: calc(8px + env(safe-area-inset-bottom)); border-top: 1px solid #ddd; }
+        .chat-input-area select { padding: 8px 2px; border-radius: 8px; border: 1px solid #ccc; font-size: 0.9rem; max-width: 80px; background: white; }
+        .chat-input-area input { flex: 1; padding: 10px 15px; border-radius: 20px; border: 1px solid #ccc; outline: none; font-size: 1rem; min-width: 0; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05); }
+        .btn-send { background-color: var(--accent-color); color: white; border: none; padding: 10px 18px; border-radius: 20px; font-weight: bold; font-size: 1rem; white-space: nowrap; flex-shrink: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        
+        .input-form { display: none; background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #ddd; box-shadow: 0 2px 5px rgba(0,0,0,0.1);}
+        .form-group { margin-bottom: 10px; display: flex; align-items: center; flex-wrap: wrap; }
+        .form-group label { min-width: 95px; font-size: 0.9rem; font-weight: bold; margin-bottom: 4px; }
+        .form-group input, .form-group textarea, .form-group select { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; min-width: 150px;}
+        
+        .leader-badge { position: absolute; top: -10px; right: 10px; background: #dc3545; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .leader-card { border: 2px solid #dc3545; background-color: #fff5f5; }
+        .medical-highlight { color: #dc3545; font-weight: bold; }
+
+        .rc-controls { background: white; padding: 10px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #ddd; display: flex; flex-direction: column; gap: 8px; }
+        .rc-controls-row { display: flex; gap: 10px; align-items: center; }
+        .rc-controls select, .rc-controls input { flex: 1; padding: 8px; border-radius: 5px; border: 1px solid #ccc; font-size: 0.95rem; }
+        .rollcall-status-bar { display: flex; justify-content: space-between; align-items: center; background: #e9ecef; padding: 10px 15px; border-radius: 8px; margin-bottom: 15px; font-weight: bold; }
+        .rc-card { display: flex; justify-content: space-between; align-items: center; padding: 15px; border: 1px solid #eee; border-radius: 8px; margin-bottom: 10px; cursor: pointer; transition: background 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .rc-card.present { background-color: #d4edda; border-color: #c3e6cb; }
+        .rc-card.absent { background-color: white; }
+        .rc-name { font-size: 1.1rem; font-weight: bold; }
+        .rc-indicator { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #ccc; display: flex; align-items: center; justify-content: center; font-weight: bold;}
+        .present .rc-indicator { background-color: var(--success-color); border-color: var(--success-color); color: white; }
+        .present .rc-indicator::after { content: '✓'; }
+        
+        .day-tabs { display: flex; overflow-x: auto; margin-bottom: 15px; border-bottom: 2px solid #ddd; white-space: nowrap; scrollbar-width: none; }
+        .day-tab { padding: 10px 15px; cursor: pointer; color: #7f8c8d; font-weight: bold; flex-shrink: 0; }
+        .day-tab.active { color: var(--accent-color); border-bottom: 3px solid var(--accent-color); margin-bottom: -2px; }
+        .timeline-item { border-left: 3px solid #ddd; margin-left: 10px; padding-left: 20px; position: relative; padding-bottom: 15px; }
+        .timeline-item::before { content: ''; position: absolute; left: -8px; top: 0; width: 12px; height: 12px; border-radius: 50%; background: var(--accent-color); }
+        .mt-point { border-left-color: var(--alert-border); }
+        .mt-point::before { background: var(--alert-border); }
+        
+        .finance-summary { display: flex; gap: 10px; margin-bottom: 15px; }
+        .finance-box { flex: 1; padding: 15px; border-radius: 8px; text-align: center; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; flex-direction: column; justify-content: center; }
+        .f-public { background-color: #e2e3e5; color: #383d41; border: 1px solid #d6d8db; }
+        .f-advance { background-color: #cce5ff; color: #004085; border: 1px solid #b8daff; }
+        .f-amount-list { font-size: 1.1rem; margin-top: 8px; text-align: left; display: inline-block; margin-left: auto; margin-right: auto; }
+        .currency-row { border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 2px; margin-bottom: 2px; }
+        .currency-row:last-child { border-bottom: none; }
+        .f-tag { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; margin-right: 8px; }
+        .tag-public { background: #6c757d; color: white; }
+        .tag-advance { background: #007bff; color: white; }
+        .f-datetime { font-size: 0.8rem; color: #888; margin-bottom: 4px; }
+        
+        .embassy-card { border-left: 4px solid #0056b3; margin-bottom: 10px; padding: 10px 15px; background: #f8f9fa; border-radius: 0 8px 8px 0; }
+        .embassy-card h4 { margin: 0 0 5px 0; color: #0056b3; font-size: 1.05rem; }
+        .embassy-card p { margin: 3px 0; font-size: 0.9rem; color: #333; }
+        .embassy-card a { color: #0056b3; text-decoration: none; font-weight: bold; }
+        .em-view { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .em-view.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <button id="langToggleBtn" onclick="toggleLanguage()">🇹🇼 中 / EN</button>
+
+    <div id="loginOverlay">
+        <div class="login-box">
+            <h2 data-i18n="login_title">🛡️ 領隊版管理系統</h2>
+            <p data-i18n="login_desc">請輸入管理員密碼以進入工作站<br><span style="color:#999; font-size:0.85rem;">(預設密碼為: 123456)</span></p>
+            <input type="password" id="loginPassword" placeholder="輸入密碼" onkeypress="if(event.key === 'Enter') checkLogin()">
+            <button onclick="checkLogin()" data-i18n="login_btn">安全登入</button>
+        </div>
+    </div>
+
+    <div class="app-header" id="appHeader" data-i18n="app_title">旅行團內部通訊</div>
+    <div class="top-nav">
+        <div class="nav-item active" id="nav-chat" onclick="switchTab('chat', '旅行團內部通訊')" data-i18n="nav_chat">通訊</div>
+        <div class="nav-item" id="nav-members" onclick="switchTab('members', '團員管理')" data-i18n="nav_members">團員</div>
+        <div class="nav-item" id="nav-rollcall" onclick="switchTab('rollcall', '多重點名')" data-i18n="nav_rollcall">點名</div>
+        <div class="nav-item" id="nav-itinerary" onclick="switchTab('itinerary', '多日行程')" data-i18n="nav_itinerary">行程</div>
+        <div class="nav-item" id="nav-finance" onclick="switchTab('finance', '帳務管理')" data-i18n="nav_finance">帳務</div>
+        <div class="nav-item" id="nav-settings" onclick="switchTab('settings', '系統與備份')" data-i18n="nav_settings">設定</div>
+        <div class="nav-item" id="nav-emergency" onclick="switchTab('emergency', '設定與求助')" data-i18n="nav_emergency">求助</div>
+    </div>
+
+    <div id="module-chat" class="module-container active">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 15px 0;">
+            <span style="font-size: 0.85rem; color: #666; font-weight: bold;" data-i18n="chat_title">💬 旅遊群組</span>
+            <button id="toggleMsgBtn" onclick="toggleHiddenMessages()" style="display: none; background-color: #fff; border: 1px solid #ccc; color: var(--accent-color); padding: 5px 12px; border-radius: 15px; font-size: 0.8rem; font-weight:bold; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" data-i18n="chat_load_more">📂 載入更早的訊息</button>
+        </div>
+        <div id="leaderMsgControls" class="leader-msg-controls">
+            <div style="font-size: 0.8rem; color: #888; margin-bottom: 5px; font-weight: bold;" data-i18n="chat_mode">發送模式：</div>
+            <div class="msg-type-group">
+                <button class="msg-type-btn active-text" id="btnType_text" onclick="setMsgType('text')" data-i18n="chat_normal">💬 一般</button>
+                <button class="msg-type-btn" id="btnType_notice" onclick="setMsgType('notice')" data-i18n="chat_notice">📢 發送公告</button>
+                <button class="msg-type-btn" id="btnType_alert" onclick="setMsgType('alert')" data-i18n="chat_alert">⚠️ 發送警告</button>
+            </div>
+        </div>
+        <div class="chat-window" id="chatWindow"></div>
+        <div class="chat-input-area">
+            <select id="senderRole" onchange="handleRoleChange()"></select>
+            <input type="text" id="messageInput" placeholder="輸入訊息...">
+            <button class="btn-send" onclick="sendMessage()" data-i18n="chat_send">傳送</button>
+        </div>
+    </div>
+
+    <div id="module-members" class="module-container section-padding">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+            <h3 style="margin:0" data-i18n="member_list">團員名單</h3><button class="btn-add" onclick="openMemberForm()" data-i18n="member_add">+ 新增團員</button>
+        </div>
+
+        <div style="background-color: #e8f4f8; padding: 10px; border-radius: 8px; border: 1px solid #b8daff; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.9rem; color: #0c5460; font-weight: bold;" data-i18n="member_checklist_status">📦 檢查團員打包清單狀態</span>
+            <button id="btnFetchChecklist" class="btn-add" style="margin: 0; width: auto; background-color: #17a2b8;" onclick="fetchMemberChecklistFromCloud()" data-i18n="member_checklist_load">📥 載入最新進度</button>
+        </div>
+
+        <div class="data-card" style="background-color: #fff; border: 1px solid #ced4da; padding: 12px; margin-bottom: 15px;">
+            <h4 style="margin-top:0; margin-bottom:10px; color: var(--primary-color);">💰 繳納統計</h4>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-label">團費繳交</div>
+                    <div id="feeStatValue" class="stat-value">0 / 0</div>
+                    <div class="progress-container"><div id="feeBar" class="progress-bar" style="width: 0%"></div></div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">小費繳交</div>
+                    <div id="tipStatValue" class="stat-value">0 / 0</div>
+                    <div class="progress-container"><div id="tipBar" class="progress-bar" style="width: 0%"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="data-card" style="background-color: #e9ecef; border: 1px solid #ced4da; padding: 12px;">
+            <h4 style="margin-top:0; margin-bottom:10px; color: var(--primary-color);" data-i18n="member_diet_stats">🍽️ 團員飲食統計 (含領隊)</h4>
+            <div id="dietStatsArea" style="display: flex; flex-wrap: wrap; gap: 8px; font-size: 0.9rem; font-weight: bold;"></div>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-bottom: 15px; align-items: center;">
+            <input type="text" id="m_search" placeholder="🔍 搜尋姓名、護照或電話..." onkeyup="renderMembers()" style="flex:1; padding:10px; border-radius:8px; border:1px solid #ccc; font-size: 0.95rem; outline: none;">
+            <select id="m_sort" onchange="renderMembers()" style="padding:10px; border-radius:8px; border:1px solid #ccc; font-size: 0.95rem; outline: none; background: white; min-width: 100px;">
+                <option value="default" data-i18n="sort_default">預設排列</option>
+                <option value="name_asc" data-i18n="sort_name">依姓名</option>
+                <option value="diet" data-i18n="sort_diet">依飲食需求</option>
+            </select>
+        </div>
+        
+        <div id="memberForm" class="input-form">
+            <input type="hidden" id="m_id">
+            <div class="form-group"><label data-i18n="label_name">姓名：</label><input type="text" id="m_name"></div>
+            <div class="form-group"><label data-i18n="label_passport">護照：</label><input type="text" id="m_passport" placeholder="可不填，填寫將檢查格式"></div>
+            <div class="form-group"><label data-i18n="label_tw_phone">台灣電話：</label><input type="text" id="m_phone" placeholder="輸入台灣手機號碼"></div>
+            <div class="form-group"><label data-i18n="label_intl_phone">國際電話：</label><input type="text" id="m_intl_phone" placeholder="輸入國際/當地號碼"></div>
+            <div class="form-group"><label data-i18n="label_email">Email：</label><input type="email" id="m_email" placeholder="請輸入電子郵件"></div>
+            <div class="form-group">
+                <label data-i18n="label_diet">飲食：</label>
+                <select id="m_diet_select" onchange="toggleCustomDiet()">
+                    <option value="葷食">葷食</option><option value="素食">素食</option><option value="不吃牛">不吃牛</option><option value="不吃海鮮">不吃海鮮</option><option value="custom">-- 自定義飲食 --</option>
+                </select>
+            </div>
+            <div class="form-group" id="m_custom_diet_group" style="display:none; width:100%;"><label style="color:var(--accent-color);" data-i18n="label_diet_custom">手動輸入飲食：</label><input type="text" id="m_diet_custom" placeholder="請輸入飲食需求"></div>
+            
+            <div class="form-group"><label class="medical-highlight" data-i18n="label_medical">病史：</label><input type="text" id="m_medical" placeholder="如：藥物過敏、慢性病... (自行輸入)"></div>
+
+            <div class="form-group"><label data-i18n="label_em_name">緊急姓名：</label><input type="text" id="m_emergency_name"></div>
+            <div class="form-group"><label data-i18n="label_em_phone">緊急電話：</label><input type="text" id="m_emergency_phone"></div>
+            <div style="text-align:right"><button class="btn-reset" onclick="closeForm('memberForm')" data-i18n="btn_cancel">取消</button><button class="btn-add" onclick="saveMember()" data-i18n="btn_save">儲存</button></div>
+        </div>
+        <div id="memberListArea"></div>
+    </div>
+
+    <div id="module-rollcall" class="module-container section-padding">
+        <div class="rc-controls">
+            <div class="rc-controls-row">
+                <label style="font-weight:bold; min-width: 50px;" data-i18n="rc_date">日期：</label>
+                <input type="date" id="rc_date_select" onchange="changeRollCallDate()">
+            </div>
+            <div class="rc-controls-row">
+                <label style="font-weight:bold; min-width: 50px;" data-i18n="rc_session">場次：</label>
+                <select id="rc_session_select" onchange="handleSessionTypeChange()">
+                </select>
+            </div>
+            <div class="rc-controls-row" id="rc_custom_session_group" style="display:none;">
+                <label style="font-weight:bold; min-width: 50px;" data-i18n="rc_custom">自訂：</label>
+                <input type="text" id="rc_custom_session" placeholder="輸入自訂場次名稱 (例: 樂園門口)" onblur="changeRollCallSession()">
+            </div>
+        </div>
+        <div class="rollcall-status-bar">
+            <span id="rc-stats">已到：0 / 總計：0</span>
+            <button class="btn-reset" onclick="resetCurrentRollCall()" data-i18n="rc_reset">本場歸零</button>
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+            <button id="btn_submit_rollcall" onclick="submitRollCallToCloud()" style="width: 100%; padding: 12px; background: #00b894; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" data-i18n="rc_upload">
+                📤 上傳本場點名紀錄至雲端
+            </button>
+        </div>
+
+        <div id="rollcallArea"></div>
+    </div>
+
+    <div id="module-itinerary" class="module-container section-padding">
+        <div class="day-tabs" id="itineraryDayTabs"></div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+            <h3 style="margin:0" id="currentDayTitle">當日行程</h3><button class="btn-add" onclick="openItineraryForm()" data-i18n="itinerary_add">+ 新增行程</button>
+        </div>
+        <div id="itineraryForm" class="input-form">
+            <input type="hidden" id="i_id">
+            <div class="form-group"><label data-i18n="i_day">天數：</label><select id="i_day"><option value="1">第 1 天</option><option value="2">第 2 天</option><option value="3">第 3 天</option><option value="4">第 4 天</option><option value="5">第 5 天</option><option value="6">第 6 天</option><option value="7">第 7 天</option><option value="8">第 8 天</option><option value="9">第 9 天</option><option value="10">第 10 天</option></select></div>
+            <div class="form-group"><label data-i18n="i_date">日期：</label><input type="date" id="i_date"></div>
+            <div class="form-group"><label data-i18n="i_time">時間：</label><input type="time" id="i_time"></div>
+            <div class="form-group">
+                <label data-i18n="i_title">標題：</label>
+                <select id="i_title_select" onchange="toggleCustomTitle()">
+                    <option value="吃早餐">吃早餐</option><option value="上午登車">上午登車</option><option value="吃中餐">吃中餐</option><option value="下午登車">下午登車</option><option value="吃晚餐">吃晚餐</option><option value="晚安點名">晚安點名</option><option value="自費行程">自費行程</option><option value="custom">-- 自定義地點 (標題) --</option>
+                </select>
+            </div>
+            <div class="form-group" id="i_custom_title_group" style="display:none; width:100%;"><label style="color:var(--accent-color);" data-i18n="i_title_custom">手動輸入標題：</label><input type="text" id="i_title_custom" placeholder="請輸入標題內容"></div>
+            <div class="form-group">
+                <label data-i18n="i_loc">地點：</label>
+                <select id="i_location_select" onchange="toggleCustomLocation()">
+                    <option value="飯店大廳">飯店大廳</option><option value="飯店停車場">飯店停車場</option><option value="飯店餐廳">飯店餐廳</option><option value="景點大門入口處">景點入口處</option><option value="景點大門出口處">景點大門出口處</option><option value="景點停車場">景點停車場</option><option value="custom">-- 自定義地點 --</option>
+                </select>
+            </div>
+            <div class="form-group" id="i_custom_location_group" style="display:none; width:100%;"><label style="color:var(--accent-color);" data-i18n="i_loc_custom">手動輸入地點：</label><input type="text" id="i_location_custom" placeholder="請輸入地點內容"></div>
+            <div class="form-group"><label data-i18n="i_desc">描述：</label><textarea id="i_desc"></textarea></div>
+            <div class="form-group"><label data-i18n="i_reminder">提醒：</label><input type="text" id="i_reminders"></div>
+            <div class="form-group"><label data-i18n="i_meeting">集合點：</label><input type="checkbox" id="i_isMeeting" style="width:20px;height:20px"></div>
+            <div style="text-align:right"><button class="btn-reset" onclick="closeForm('itineraryForm')" data-i18n="btn_cancel">取消</button><button class="btn-add" onclick="saveItinerary()" data-i18n="btn_save">儲存</button></div>
+        </div>
+        <div id="itineraryArea"></div>
+    </div>
+
+    <div id="module-finance" class="module-container section-padding">
+        <div class="finance-summary">
+            <div class="finance-box f-public"><div data-i18n="f_total_pub">公費總計</div><div class="f-amount-list" id="f-total-public">$0</div></div>
+            <div class="finance-box f-advance"><div data-i18n="f_total_adv">代墊總計</div><div class="f-amount-list" id="f-total-advance">$0</div></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 15px;"><h3 style="margin:0" data-i18n="f_list">帳務明細</h3><button class="btn-add" onclick="openFinanceForm()" data-i18n="f_add">+ 新增記帳</button></div>
+        <div id="financeForm" class="input-form">
+            <input type="hidden" id="f_id">
+            <div class="form-group"><label data-i18n="f_date">日期：</label><input type="date" id="f_date"></div>
+            <div class="form-group"><label data-i18n="f_time">時間：</label><input type="time" id="f_time"></div>
+            <div class="form-group"><label data-i18n="f_type">類型：</label><select id="f_type"><option value="public">團體公費</option><option value="advance">個人代墊</option></select></div>
+            <div class="form-group">
+                <label data-i18n="f_currency">幣別：</label>
+                <select id="f_currency">
+                    <option value="TWD">台幣 (TWD)</option><option value="USD">美金 (USD)</option><option value="JPY">日幣 (JPY)</option><option value="KRW">韓幣 (KRW)</option><option value="CNY">人民幣 (CNY)</option><option value="HKD">港幣 (HKD)</option><option value="SGD">新加坡幣 (SGD)</option><option value="VND">越南幣 (VND)</option><option value="THB">泰幣 (THB)</option><option value="IDR">印尼幣 (IDR)</option>
+                </select>
+            </div>
+            <div class="form-group"><label data-i18n="f_item">項目：</label><input type="text" id="f_title"></div>
+            <div class="form-group"><label data-i18n="f_amount">金額：</label><input type="number" id="f_amount"></div>
+            <div class="form-group"><label data-i18n="f_note">備註/對象：</label><input type="text" id="f_target"></div>
+            <div style="text-align:right"><button class="btn-reset" onclick="closeForm('financeForm')" data-i18n="btn_cancel">取消</button><button class="btn-add" onclick="saveFinance()" data-i18n="btn_save">儲存</button></div>
+        </div>
+        <div id="financeArea"></div>
+    </div>
+
+    <div id="module-settings" class="module-container section-padding">
+        <div class="data-card" style="border: 2px solid #6f42c1; background-color: #f8f0ff;">
+            <h3 style="margin-top:0; border-bottom:2px solid #6f42c1; padding-bottom:5px; color:#6f42c1;" data-i18n="s_cloud_title">☁️ 系統設定與雲端同步</h3>
+            <p style="font-size: 0.85rem; color: #555; margin-bottom: 8px;" data-i18n="s_cloud_desc">同步系統版本、密碼、API狀態等 10 項核心設定至 Google Sheet。</p>
+            <button class="btn-add" style="width:100%; background-color:#6f42c1; font-size: 1rem;" onclick="syncSettingsToCloud()" data-i18n="s_cloud_btn">📤 備份系統設定檔至雲端</button>
+        </div>
+
+        <div class="data-card"><h3 style="margin-top:0; border-bottom:2px solid var(--accent-color); padding-bottom:5px; color:var(--primary-color);" data-i18n="s_backup_title">📦 系統完整備份 / 還原</h3><button class="btn-add" style="width:100%; margin-bottom:15px; background-color:#17a2b8;" onclick="exportJSONBackup()" data-i18n="s_backup_export">⬇️ 匯出完整備份檔 (.json)</button><div style="background-color:#fff3cd; padding:10px; border-radius:5px; border:1px solid #ffeeba;"><p style="margin:0 0 10px 0; font-size:0.85rem; color:#856404; font-weight:bold;" data-i18n="s_backup_import">⚠️ 還原備份</p><input type="file" id="backupFileInput" accept=".json" style="width:100%; margin-bottom:10px; font-size:0.9rem;"><button class="btn-delete" style="width:100%; border:none; padding:8px; border-radius:5px; color:white; background-color:#dc3545;" onclick="importJSONBackup()" data-i18n="s_backup_import_btn">⬆️ 執行匯入還原</button></div></div>
+        
+        <div class="data-card"><h3 style="margin-top:0; border-bottom:2px solid var(--accent-color); padding-bottom:5px; color:var(--primary-color);" data-i18n="s_excel_title">📊 匯出實體報表 (Excel)</h3><button class="btn-add" style="width:100%; margin-bottom:10px; background-color:#28a745;" onclick="exportCSV('members')" data-i18n="s_excel_mem">📝 匯出團員名單 (Excel 檔)</button><button class="btn-add" style="width:100%; background-color:#28a745;" onclick="exportCSV('finance')" data-i18n="s_excel_fin">💰 匯出帳務明細 (Excel 檔)</button></div>
+        
+        <div class="data-card" style="border: 1px solid #ddd;">
+            <h3 style="margin-top:0; border-bottom:2px solid #f39c12; padding-bottom:5px; color:#e67e22;" data-i18n="s_sec_title">🔐 系統安全與存取</h3>
+            <div style="margin-bottom: 15px;">
+                <p style="font-size: 0.85rem; color: #666; margin-bottom: 8px;" data-i18n="s_sec_pwd">修改開啟系統的專屬密碼 (預設: 123456)</p>
+                <button class="btn-add" onclick="changePassword()" style="width:100%; background-color:#f39c12;" data-i18n="s_sec_pwd_btn">修改系統啟動密碼</button>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <p style="font-size: 0.85rem; color: #666; margin-bottom: 8px;" data-i18n="s_sec_logout">強制登出並鎖定工作站</p>
+                <button class="btn-reset" onclick="logoutSystem()" style="width:100%; background-color:#34495e;" data-i18n="s_sec_logout_btn">安全登出系統</button>
+            </div>
+        </div>
+
+        <div class="data-card" style="border: 2px solid var(--alert-border);"><h3 style="margin-top:0; border-bottom:2px solid var(--alert-border); padding-bottom:5px; color:var(--alert-border);" data-i18n="s_clear_title">⚠️ 結團 / 開啟新團</h3><p style="font-size: 0.9rem; color: #555;" data-i18n="s_clear_desc1">旅行團圓滿結束後，您可以在此一鍵清除所有資料，為迎接下一團做準備。</p><p style="font-size: 0.9rem; color: var(--alert-border); font-weight: bold;" data-i18n="s_clear_desc2">※ 強烈建議：執行前請先使用上方的「匯出完整備份檔」妥善保存本團紀錄！</p><button class="btn-delete" style="width:100%; border:none; padding:12px; border-radius:5px; color:white; background-color:var(--alert-border); font-size:1rem; font-weight:bold; cursor:pointer;" onclick="clearAllDataForNewTour()" data-i18n="s_clear_btn">🗑️ 清除所有資料 (迎接新團)</button></div>
+    </div>   
+
+    <div id="module-emergency" class="module-container section-padding">
+        <div class="form-group" style="background:#fff; padding:10px; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+            <label style="width:100%; font-size:1.1rem; color:var(--alert-border);" data-i18n="em_select">🆘 選擇設定與求助類別：</label>
+            <select id="em_category_select" onchange="toggleEmergencyView()" style="width:100%; font-size:1rem; padding:10px; margin-top:8px; border:2px solid var(--alert-border); border-radius:5px; font-weight:bold;">
+                <option value="em_airport">✈️ 機場集合資訊 (出發必備)</option>
+                <option value="em_leader">👤 領隊姓名及電話 (自動同步至名單)</option>
+                <option value="em_guide">🚶 導遊姓名及電話</option>
+                <option value="em_driver">🚌 司機姓名、電話及車號</option>
+                <option value="em_comp">🏢 旅行社名稱及電話</option>
+                <option value="em_mofa">🇹🇼 台灣駐外大使館連絡電話</option>
+            </select>
+        </div>
+        
+        <div id="view_em_airport" class="em-view active data-card" style="border-top:4px solid var(--alert-border);">
+            <div class="form-group"><label>集合日期：</label><input type="date" id="em_input_airport_date" onblur="saveEmergencyData()"></div>
+            <div class="form-group"><label>集合時間：</label><input type="time" id="em_input_airport_time" onblur="saveEmergencyData()"></div>
+            <div class="form-group"><label>集合地點：</label>
+                <select id="em_input_airport_location" onchange="saveEmergencyData()" style="padding: 10px; font-size: 1rem; border-color: var(--accent-color);">
+                    <option value="桃園國際機場第1航廈">桃園國際機場第1航廈</option>
+                    <option value="桃園國際機場第2航廈">桃園國際機場第2航廈</option>
+                    <option value="桃園國際機場第3航廈">桃園國際機場第3航廈</option>
+                    <option value="台北松山國際機場">台北松山國際機場</option>
+                    <option value="台中國際機場">台中國際機場</option>
+                    <option value="高雄小港國際機場">高雄小港國際機場</option>
+                    <option value="花蓮國際機場">花蓮國際機場</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="view_em_leader" class="em-view data-card" style="border-top:4px solid var(--alert-border);">
+            <div class="form-group"><label>領隊姓名：</label><input type="text" id="em_input_leader_name" placeholder="輸入領隊全名" onblur="saveEmergencyData()"></div>
+            <div class="form-group"><label>台灣電話：</label><input type="text" id="em_input_leader_taiwan_phone" placeholder="輸入領隊台灣電話" onblur="saveEmergencyData()"></div>
+            <div class="form-group"><label>國際電話：</label><input type="text" id="em_input_leader_intl_phone" placeholder="輸入領隊國際電話" onblur="saveEmergencyData()"></div>
+        </div>
+
+        <div id="view_em_guide" class="em-view data-card" style="border-top:4px solid var(--alert-border);">
+            <div class="form-group"><label>導遊姓名：</label><input type="text" id="em_input_guide_name" placeholder="輸入當地導遊姓名" onblur="saveEmergencyData()"></div>
+            <div class="form-group"><label>導遊電話：</label><input type="text" id="em_input_guide_phone" placeholder="輸入導遊電話" onblur="saveEmergencyData()"></div>
+        </div>
+
+        <div id="view_em_driver" class="em-view data-card" style="border-top:4px solid var(--alert-border);">
+            <div class="form-group"><label>司機姓名：</label><input type="text" id="em_input_driver_name" placeholder="輸入司機姓名" onblur="saveEmergencyData()"></div>
+            <div class="form-group"><label>司機電話：</label><input type="text" id="em_input_driver_phone" placeholder="輸入司機電話" onblur="saveEmergencyData()"></div>
+            <div class="form-group"><label>遊覽車號：</label><input type="text" id="em_input_bus_number" placeholder="輸入車牌號碼" onblur="saveEmergencyData()"></div>
+        </div>
+
+        <div id="view_em_comp" class="em-view data-card" style="border-top:4px solid var(--alert-border);">
+            <div class="form-group"><label>公司名稱：</label><input type="text" id="em_input_comp_name" placeholder="輸入公司名稱" onblur="saveEmergencyData()"></div>
+            <div class="form-group"><label>公司電話：</label><input type="text" id="em_input_comp_phone" placeholder="輸入公司電話" onblur="saveEmergencyData()"></div>
+        </div>
+        
+        <div id="view_em_mofa" class="em-view data-card" style="border:none; padding:0; box-shadow:none; background:transparent;">
+            <div class="embassy-card" style="border-left-color: #dc3545; background:#fff5f5;">
+                <h4 style="color:#dc3545;">🇹🇼 外交部緊急聯絡中心 (全球)</h4>
+                <p><b>電話：</b><a href="tel:+886-800-0885-086">+886-800-0885-086</a> (旅外國人急難救助全球免付費專線)</p>
+                <p><b>地址：</b>台北市中正區凱達格蘭大道2號</p>
+            </div>
+            <div class="embassy-card" style="border-left-color: #28a745; background:#f0fcf4;">
+                <h4 style="color:#28a745;">🇹🇼 中華民國領隊協會</h4>
+                <p><b>電話：</b><a href="tel:+886-2-2545-9989">+886-2-2545-9989</a> (02-2545-9989)</p>
+                <p><b>地址：</b>台北市中山區南京東路三段285號11樓</p>
+            </div>
+            <div class="embassy-card"><h4>🇯🇵 日本 (東京)</h4><p><b>急難救助：</b><a href="tel:+81-3-3280-7917">+81-3-3280-7917</a></p><p><b>地址：</b>東京都港區白金台5-20-2</p></div>
+            <div class="embassy-card"><h4>🇰🇷 韓國 (首爾)</h4><p><b>急難救助：</b><a href="tel:+82-10-9080-2761">+82-10-9080-2761</a></p><p><b>地址：</b>首爾市鍾路區世宗大路149號光化門大廈6樓</p></div>
+            <div class="embassy-card"><h4>🇭🇰 香港</h4><p><b>急難救助：</b><a href="tel:+852-6143-9012">+852-6143-9012</a></p><p><b>地址：</b>香港金鐘道89號力寶中心第1座40樓</p></div>
+            <div class="embassy-card"><h4>🇻🇳 越南 (河內)</h4><p><b>急難救助：</b><a href="tel:+84-913-219-986">+84-913-219-986</a></p><p><b>地址：</b>20A/21st Floor, PVI Tower, No.1, Pham Van Bach Road, Cau Giay Ward, Hanoi</p></div>
+            <div class="embassy-card"><h4>🇱🇦 寮國</h4><p><b>急難救助：</b><a href="tel:+84-913-219-986">+84-913-219-986</a> (由駐越南代表處兼轄)</p></div>
+            <div class="embassy-card"><h4>🇲🇾 馬來西亞 (吉隆坡)</h4><p><b>急難救助：</b><a href="tel:+60-19-656-9912">+60-19-656-9912</a></p><p><b>地址：</b>Level 7, Menara Yayasan Tun Razak, 200 Jalan Bukit Bintang, Kuala Lumpur</p></div>
+            <div class="embassy-card"><h4>🇵🇭 菲律賓 (馬尼拉)</h4><p><b>急難救助：</b><a href="tel:+63-917-819-4597">+63-917-819-4597</a></p><p><b>地址：</b>41F, RCBC Plaza, Tower 1, 6819 Ayala Avenue, Makati City</p></div>
+            <div class="embassy-card"><h4>🇸🇬 新加坡</h4><p><b>急難救助：</b><a href="tel:+65-9638-9436">+65-9638-9436</a></p><p><b>地址：</b>460 Alexandra Road #23-00, mTower, Singapore</p></div>
+            <div class="embassy-card"><h4>🇮🇩 印度尼西亞 (雅加達)</h4><p><b>急難救助：</b><a href="tel:+62-811-984-676">+62-811-984-676</a></p><p><b>地址：</b>12th Floor, Gedung Artha Graha, Jl. Jend. Sudirman Kav. 52-53, Jakarta</p></div>
+            <div class="embassy-card"><h4>🇵🇼 帛琉</h4><p><b>急難救助：</b><a href="tel:+680-775-6688">+680-775-6688</a></p><p><b>地址：</b>3F Ben Franklin Building, Koror, Republic of Palau</p></div>
+            <div class="embassy-card"><h4>🇹🇭 泰國 (曼谷)</h4><p><b>急難救助：</b><a href="tel:+66-81-666-4006">+66-81-666-4006</a></p><p><b>地址：</b>40/64 Vibhavadi-Rangsit 66, Laksi, 10210 Bangkok</p></div>
+            <div class="embassy-card"><h4>🇦🇺 澳大利亞 (坎培拉)</h4><p><b>急難救助：</b><a href="tel:+61-418-284-531">+61-418-284-531</a></p><p><b>地址：</b>Unit 8, 40 Blackall Street, Barton, Canberra</p></div>
+            <div class="embassy-card"><h4>🇳🇿 紐西蘭 (威靈頓)</h4><p><b>急難救助：</b><a href="tel:+64-27-449-5300">+64-27-449-5300</a></p><p><b>地址：</b>Level 23, 100 Willis Street, Majestic Centre, Wellington</p></div>
+        </div>
+    </div>
+
+<script>
+    let currentLang = localStorage.getItem('tour_leader_lang') || 'zh';
+
+    const i18nDict = {
+        'zh': {
+            'login_title': '🛡️ 領隊版管理系統', 'login_desc': '請輸入管理員密碼以進入工作站\n(預設密碼為: 123456)', 'login_btn': '安全登入',
+            'app_title': '旅行團內部通訊', 'nav_chat': '通訊', 'nav_members': '團員', 'nav_rollcall': '點名', 'nav_itinerary': '行程', 'nav_finance': '帳務', 'nav_settings': '設定', 'nav_emergency': '求助',
+            'chat_title': '💬 旅遊群組', 'chat_load_more': '📂 載入更早的訊息', 'chat_mode': '發送模式：', 'chat_normal': '💬 一般', 'chat_notice': '📢 發送公告', 'chat_alert': '⚠️ 發送警告', 'chat_send': '傳送',
+            'member_list': '團員名單', 'member_add': '+ 新增團員', 'member_checklist_status': '📦 檢查團員打包清單狀態', 'member_checklist_load': '📥 載入最新進度', 'member_diet_stats': '🍽️ 團員飲食統計 (含領隊)',
+            'sort_default': '預設排列', 'sort_name': '依姓名', 'sort_diet': '依飲食需求',
+            'label_name': '姓名：', 'label_passport': '護照：', 'label_tw_phone': '台灣電話：', 'label_intl_phone': '國際電話：', 'label_email': 'Email：', 'label_diet': '飲食：', 'label_diet_custom': '手動輸入飲食：', 'label_medical': '病史：', 'label_em_name': '緊急姓名：', 'label_em_phone': '緊急電話：', 'btn_cancel': '取消', 'btn_save': '儲存',
+            'rc_date': '日期：', 'rc_session': '場次：', 'rc_custom': '自訂：', 'rc_reset': '本場歸零', 'rc_upload': '📤 上傳本場點名紀錄至雲端',
+            'itinerary_add': '+ 新增行程', 'i_day': '天數：', 'i_date': '日期：', 'i_time': '時間：', 'i_title': '標題：', 'i_title_custom': '手動輸入標題：', 'i_loc': '地點：', 'i_loc_custom': '手動輸入地點：', 'i_desc': '描述：', 'i_reminder': '提醒：', 'i_meeting': '集合點：',
+            'f_total_pub': '公費總計', 'f_total_adv': '代墊總計', 'f_list': '帳務明細', 'f_add': '+ 新增記帳', 'f_date': '日期：', 'f_time': '時間：', 'f_type': '類型：', 'f_currency': '幣別：', 'f_item': '項目：', 'f_amount': '金額：', 'f_note': '備註/對象：',
+            's_cloud_title': '☁️ 系統設定與雲端同步', 's_cloud_desc': '同步系統版本、密碼、API狀態等 10 項核心設定至 Google Sheet。', 's_cloud_btn': '📤 備份系統設定檔至雲端',
+            's_backup_title': '📦 系統完整備份 / 還原', 's_backup_export': '⬇️ 匯出完整備份檔 (.json)', 's_backup_import': '⚠️ 還原備份', 's_backup_import_btn': '⬆️ 執行匯入還原',
+            's_excel_title': '📊 匯出實體報表 (Excel)', 's_excel_mem': '📝 匯出團員名單 (Excel 檔)', 's_excel_fin': '💰 匯出帳務明細 (Excel 檔)',
+            's_sec_title': '🔐 系統安全與存取', 's_sec_pwd': '修改開啟系統的專屬密碼 (預設: 123456)', 's_sec_pwd_btn': '修改系統啟動密碼', 's_sec_logout': '強制登出並鎖定工作站', 's_sec_logout_btn': '安全登出系統',
+            's_clear_title': '⚠️ 結團 / 開啟新團', 's_clear_desc1': '旅行團圓滿結束後，您可以在此一鍵清除所有資料，為迎接下一團做準備。', 's_clear_desc2': '※ 強烈建議：執行前請先使用上方的「匯出完整備份檔」妥善保存本團紀錄！', 's_clear_btn': '🗑️ 清除所有資料 (迎接新團)',
+            'em_select': '🆘 選擇設定與求助類別：',
+            'medical_history_label': '病史'
+        },
+        'en': {
+            'login_title': '🛡️ Leader System', 'login_desc': 'Enter admin password to login\n(Default: 123456)', 'login_btn': 'Login',
+            'app_title': 'Tour Communication', 'nav_chat': 'Chat', 'nav_members': 'Members', 'nav_rollcall': 'Roll Call', 'nav_itinerary': 'Itinerary', 'nav_finance': 'Finance', 'nav_settings': 'Settings', 'nav_emergency': 'Help',
+            'chat_title': '💬 Tour Group', 'chat_load_more': '📂 Load Older Messages', 'chat_mode': 'Mode:', 'chat_normal': '💬 Normal', 'chat_notice': '📢 Notice', 'chat_alert': '⚠️ Alert', 'chat_send': 'Send',
+            'member_list': 'Member List', 'member_add': '+ Add Member', 'member_checklist_status': '📦 Check Members Packing Status', 'member_checklist_load': '📥 Load Progress', 'member_diet_stats': '🍽️ Dietary Stats',
+            'sort_default': 'Default Sort', 'sort_name': 'Sort by Name', 'sort_diet': 'Sort by Diet',
+            'label_name': 'Name:', 'label_passport': 'Passport:', 'label_tw_phone': 'TW Phone:', 'label_intl_phone': 'Intl Phone:', 'label_email': 'Email:', 'label_diet': 'Diet:', 'label_diet_custom': 'Custom Diet:', 'label_medical': 'Medical:', 'label_em_name': 'Em. Contact:', 'label_em_phone': 'Em. Phone:', 'btn_cancel': 'Cancel', 'btn_save': 'Save',
+            'rc_date': 'Date:', 'rc_session': 'Session:', 'rc_custom': 'Custom:', 'rc_reset': 'Reset', 'rc_upload': '📤 Upload Roll Call to Cloud',
+            'itinerary_add': '+ Add Itinerary', 'i_day': 'Day:', 'i_date': 'Date:', 'i_time': 'Time:', 'i_title': 'Title:', 'i_title_custom': 'Custom Title:', 'i_loc': 'Location:', 'i_loc_custom': 'Custom Loc:', 'i_desc': 'Desc:', 'i_reminder': 'Reminder:', 'i_meeting': 'Meeting Pt:',
+            'f_total_pub': 'Public Total', 'f_total_adv': 'Advance Total', 'f_list': 'Transactions', 'f_add': '+ Add Record', 'f_date': 'Date:', 'f_time': 'Time:', 'f_type': 'Type:', 'f_currency': 'Currency:', 'f_item': 'Item:', 'f_amount': 'Amount:', 'f_note': 'Note:',
+            's_cloud_title': '☁️ System Settings & Sync', 's_cloud_desc': 'Sync 10 core settings to Google Sheet.', 's_cloud_btn': '📤 Sync Settings to Cloud',
+            's_backup_title': '📦 Backup & Restore', 's_backup_export': '⬇️ Export Backup (.json)', 's_backup_import': '⚠️ Restore Backup', 's_backup_import_btn': '⬆️ Execute Restore',
+            's_excel_title': '📊 Export Reports (Excel)', 's_excel_mem': '📝 Export Members (Excel)', 's_excel_fin': '💰 Export Finance (Excel)',
+            's_sec_title': '🔐 Security & Access', 's_sec_pwd': 'Change system password (Default: 123456)', 's_sec_pwd_btn': 'Change Password', 's_sec_logout': 'Force logout and lock station', 's_sec_logout_btn': 'Secure Logout',
+            's_clear_title': '⚠️ End Tour / New Tour', 's_clear_desc1': 'Clear all data to prepare for the next tour.', 's_clear_desc2': '※ Recommended: Export backup before clearing!', 's_clear_btn': '🗑️ Clear All Data (New Tour)',
+            'em_select': '🆘 Select Help Category:',
+            'medical_history_label': 'Medical'
+        }
+    };
+
+    function toggleLanguage() {
+        currentLang = currentLang === 'zh' ? 'en' : 'zh';
+        localStorage.setItem('tour_leader_lang', currentLang);
+        applyLanguage();
+        renderMembers(); 
+    }
+
+    function applyLanguage() {
+        const btn = document.getElementById('langToggleBtn');
+        if (btn) btn.innerText = currentLang === 'zh' ? '🇹🇼 中 / EN' : '🇺🇸 EN / 中';
+
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (i18nDict[currentLang] && i18nDict[currentLang][key]) {
+                if (el.tagName === 'INPUT' && el.placeholder && el.id !== 'messageInput') {
+                    
+                } else if (el.id === 'loginPassword') {
+                     
+                }
+                else {
+                    el.innerHTML = i18nDict[currentLang][key]; 
+                }
+            }
+        });
+    }
+
+    function checkLogin() {
+        const inputPwd = document.getElementById('loginPassword').value;
+        const storedPwd = localStorage.getItem('leader_custom_password') || '123456';
+        
+        if (inputPwd === storedPwd) {
+            sessionStorage.setItem('tour_leader_logged_in', 'true');
+            document.getElementById('loginOverlay').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('loginOverlay').style.display = 'none';
+                document.getElementById('langToggleBtn').style.display = 'block'; 
+                applyLanguage(); 
+            }, 300);
+        } else {
+            alert(currentLang === 'zh' ? "❌ 密碼錯誤，請重新輸入！\n(預設密碼為: 123456)" : "❌ Wrong Password!");
+        }
+    }
+
+    function initApp() {
+        applyLanguage();
+        if (sessionStorage.getItem('tour_leader_logged_in') === 'true') {
+            document.getElementById('loginOverlay').style.display = 'none';
+            document.getElementById('langToggleBtn').style.display = 'block';
+        }
+        loadData();
+    }
+
+    // ==========================================
+    // ★★★ 雲端連線設定 (安靜背景上傳模式) ★★★
+    // ==========================================
+    const API_URL = "https://script.google.com/macros/s/AKfycbzkkCiSHXoXS60-6_nby_H0eG8ONYRXGYixDFlXJJ_BAEydtEqYqXRs-VbCeRZGh1_1/exec";
+
+    async function syncToCloud(targetSheetName, payloadData) {
+        if (!API_URL || API_URL === "請填入您的_GAS_網址") return false;
+        
+        const currentTimestamp = new Date().toLocaleString('zh-TW', { hour12: false });
+        if (Array.isArray(payloadData)) {
+            payloadData.forEach(item => { if (!item.timestamp) item.timestamp = currentTimestamp; });
+        } else {
+            if (!payloadData.timestamp) payloadData.timestamp = currentTimestamp;
+        }
+
+        try {
+            const response = await fetch(API_URL, {
+                method: "POST",
+                redirect: "follow",
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify({
+                    targetSheet: targetSheetName,
+                    action: "save",
+                    data: payloadData
+                })
+            });
+            const result = await response.json();
+            return result.status === "success";
+        } catch (error) {
+            return false;
+        }
+    }
+
+    function escapeHTML(str) { if (!str) return ''; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; }
+    function validatePassport(passport) { return /^[A-Z0-9]{7,12}$/i.test(passport); }
+    function validatePhone(phone) { return /^(\+?\d{1,4}[\s-]?)?\d{8,15}$/.test(phone); }
+    function formatTimeStr(timeStr) {
+        if (!timeStr) return '';
+        const parts = timeStr.split(':');
+        if (parts.length !== 2) return timeStr;
+        let h = parseInt(parts[0], 10);
+        let m = parts[1];
+        let ampm = h >= 12 ? '下午' : '上午';
+        let h12 = h % 12 || 12;
+        return `${timeStr} (${ampm} ${h12}:${m})`;
+    }
+
+    const KEYS = { MESSAGES: 'tourMessagesData', MEMBERS: 'tourMembersData', ITINERARY: 'tourItineraryData', ROLLCALL: 'tourRollCallData', FINANCE: 'tourFinanceData', EMERGENCY: 'tourEmergencyData' };
+    
+    let messages = JSON.parse(localStorage.getItem(KEYS.MESSAGES)) || [];
+    let members = JSON.parse(localStorage.getItem(KEYS.MEMBERS)) || [{ memberId: 'm0', name: '領隊', passportNo: '', phone: '', intlPhone: '', email: '', dietaryRestrictions: '葷食', medicalHistory: '', emergencyContactName: '公司', emergencyContactPhone: '', feeStatus: '未繳費', tipStatus: '未繳費' }];
+    let itinerary = JSON.parse(localStorage.getItem(KEYS.ITINERARY)) || [];
+    let rollcallState = JSON.parse(localStorage.getItem(KEYS.ROLLCALL)) || {}; 
+    let financeRecords = JSON.parse(localStorage.getItem(KEYS.FINANCE)) || [];
+    let emergencyData = JSON.parse(localStorage.getItem(KEYS.EMERGENCY)) || { 
+        compName: '', compPhone: '', leaderName: '領隊', leaderTaiwanPhone: '', leaderIntlPhone: '',
+        guideName: '', guidePhone: '', driverName: '', driverPhone: '', busNumber: '',
+        airportDate: '', airportTime: '', airportLocation: '桃園國際機場第1航廈'
+    };
+    
+    if (emergencyData.leaderPhone) { emergencyData.leaderTaiwanPhone = emergencyData.leaderPhone; delete emergencyData.leaderPhone; }
+    
+    let currentRollCallId = ""; let currentItineraryDay = '1'; let currentTab = 'chat'; let currentMsgType = 'text'; let isShowingAllMessages = false; 
+    let memberChecklistStatus = {}; 
+
+    function loadData() {
+        if(currentTab === 'chat') { renderMessages(); syncSenderDropdown(); }
+        if(currentTab === 'members') renderMembers();
+        if(currentTab === 'rollcall') { initRollCallControls(); renderRollCall(); }
+        if(currentTab === 'itinerary') renderItinerary();
+        if(currentTab === 'finance') renderFinance();
+        if(currentTab === 'emergency') initEmergency();
+    }
+
+    window.addEventListener('storage', (e) => { if (Object.values(KEYS).includes(e.key)) loadData(); });
+
+    function switchTab(tabId, title) {
+        currentTab = tabId; 
+        document.getElementById('appHeader').textContent = currentLang === 'zh' ? title : (i18nDict['en']['app_title'] || title);
+        document.querySelectorAll('.module-container').forEach(m => m.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.getElementById('module-' + tabId).classList.add('active');
+        document.getElementById('nav-' + tabId).classList.add('active');
+        loadData();
+    }
+    function closeForm(id) { document.getElementById(id).style.display = 'none'; }
+
+    // ==========================================
+    // 通訊 (Chat)
+    // ==========================================
+    function syncSenderDropdown() {
+        const sel = document.getElementById('senderRole'); const cur = sel.value; 
+        sel.innerHTML = members.map(m => `<option value="${m.memberId}">${escapeHTML(m.name)}</option>`).join('');
+        if(cur && members.some(m => m.memberId === cur)) sel.value = cur;
+        handleRoleChange();
+    }
+    function handleRoleChange() {
+        const senderId = document.getElementById('senderRole').value;
+        let isLeader = (senderId === 'm0');
+        document.getElementById('leaderMsgControls').style.display = isLeader ? 'block' : 'none';
+        if (!isLeader) setMsgType('text');
+    }
+    function setMsgType(type) {
+        currentMsgType = type;
+        document.getElementById('btnType_text').classList.remove('active-text');
+        document.getElementById('btnType_notice').classList.remove('active-notice');
+        document.getElementById('btnType_alert').classList.remove('active-alert');
+        if(type === 'text') document.getElementById('btnType_text').classList.add('active-text');
+        if(type === 'notice') document.getElementById('btnType_notice').classList.add('active-notice');
+        if(type === 'alert') document.getElementById('btnType_alert').classList.add('active-alert');
+    }
+    function toggleHiddenMessages() { isShowingAllMessages = !isShowingAllMessages; renderMessages(); }
+
+    function renderMessages() {
+        const win = document.getElementById('chatWindow'); win.innerHTML = '';
+        const currentSenderId = document.getElementById('senderRole').value;
+        const currentSenderName = (members.find(m => m.memberId === currentSenderId) || {}).name || '';
+        const toggleBtn = document.getElementById('toggleMsgBtn');
+
+        let msgsToShow = messages;
+        if (messages.length > 450) {
+            toggleBtn.style.display = 'block';
+            if (!isShowingAllMessages) {
+                msgsToShow = messages.slice(-450);
+                toggleBtn.innerHTML = `📂 載入更早的 ${messages.length - 450} 條訊息`;
+            } else {
+                toggleBtn.innerHTML = `⬆️ 收起早期訊息`;
+            }
+        } else { toggleBtn.style.display = 'none'; }
+
+        msgsToShow.forEach(msg => {
+            const isSelf = msg.senderName === currentSenderName;
+            const wrap = document.createElement('div');
+            if (msg.messageType === 'notice') wrap.className = 'message-wrapper notice-style';
+            else if (msg.messageType === 'alert') wrap.className = 'message-wrapper alert-style';
+            else wrap.className = `message-wrapper ${isSelf ? 'self' : 'other'}`;
+            let contentHtml = escapeHTML(msg.textContent);
+            if(msg.messageType === 'notice') contentHtml = `📢 <b>系統公告</b><hr style="margin:5px 0; border:0; border-top:1px dashed #d39e00;">${contentHtml}`;
+            if(msg.messageType === 'alert') contentHtml = `⚠️ <b>緊急警告</b><hr style="margin:5px 0; border:0; border-top:1px dashed #dc3545;">${contentHtml}`;
+            
+            let timeStr = msg.timestamp;
+            if (typeof msg.timestamp === 'number') {
+                const d = new Date(msg.timestamp); 
+                timeStr = `${d.getFullYear()}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+            }
+
+            wrap.innerHTML = `<div class="sender-name">${escapeHTML(msg.senderName)}</div><div class="message-bubble">${contentHtml}</div><div class="message-info" style="font-size: 0.75rem; color: #888; margin-top: 4px; padding: 0 5px;"><span>${escapeHTML(timeStr)}</span>${isSelf ? `<button class="action-btn btn-edit" onclick="editMsg('${msg.messageId}')">修改</button><button class="action-btn btn-delete" onclick="deleteMsg('${msg.messageId}')">刪除</button>` : ''}</div>`;
+            win.appendChild(wrap);
+        });
+        if (!isShowingAllMessages) win.scrollTop = win.scrollHeight;
+    }
+    
+    function sendMessage() {
+        const input = document.getElementById('messageInput'); const text = input.value.trim(); if(!text) return;
+        const senderId = document.getElementById('senderRole').value; const senderObj = members.find(m => m.memberId === senderId);
+        let isLeader = (senderId === 'm0'); 
+        
+        const currentTimestamp = new Date().toLocaleString('zh-TW', { hour12: false });
+
+        const newMsg = { 
+            messageId: 'msg_'+Date.now(), 
+            senderName: senderObj ? senderObj.name : '未知', 
+            textContent: text, 
+            timestamp: currentTimestamp, 
+            messageType: isLeader ? currentMsgType : 'text' 
+        };
+        messages.push(newMsg);
+        localStorage.setItem(KEYS.MESSAGES, JSON.stringify(messages)); 
+        input.value = ''; 
+        if(isLeader) setMsgType('text'); 
+        renderMessages();
+
+        syncToCloud("messages", {
+            messageId: newMsg.messageId,
+            timestamp: newMsg.timestamp,
+            senderName: newMsg.senderName,
+            textContent: newMsg.textContent,
+            messageType: newMsg.messageType
+        });
+    }
+    function deleteMsg(id) { if(confirm('刪除？')) { messages = messages.filter(m => m.messageId !== id); localStorage.setItem(KEYS.MESSAGES, JSON.stringify(messages)); renderMessages(); } }
+    function editMsg(id) { const msg = messages.find(m => m.messageId === id); const nt = prompt("修改訊息內容：", msg.textContent); if(nt) { msg.textContent = nt; localStorage.setItem(KEYS.MESSAGES, JSON.stringify(messages)); renderMessages(); } }
+
+
+    // ==========================================
+    // 團員 (Members) + ★ 繳費統計與功能 ★
+    // ==========================================
+    async function fetchMemberChecklistFromCloud() {
+        if (!API_URL || API_URL === "請填入您的_GAS_網址") { alert("⚠️ 請先設定 API 網址！"); return; }
+        const btn = document.getElementById('btnFetchChecklist');
+        if(btn) { btn.disabled = true; btn.innerText = "⏳ 讀取中..."; }
+        try {
+            const response = await fetch(API_URL, {
+                method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify({ targetSheet: "member_checklist", action: "read" })
+            });
+            const result = await response.json();
+            if(result.status === "success") {
+                const records = result.data || []; const stats = {};
+                records.forEach(r => {
+                    const mid = r.memberId; if(!mid) return;
+                    if(!stats[mid]) stats[mid] = { total: 0, done: 0 };
+                    stats[mid].total += 1;
+                    if(r.status === '✅ 已準備') stats[mid].done += 1;
+                });
+                memberChecklistStatus = {};
+                for(const mid in stats) {
+                    if (stats[mid].total === 0 || stats[mid].done === 0) memberChecklistStatus[mid] = "無動作";
+                    else if (stats[mid].done === stats[mid].total) memberChecklistStatus[mid] = "全部完成";
+                    else memberChecklistStatus[mid] = "部分完成";
+                }
+                alert("✅ 成功更新團員打包進度！"); renderMembers();
+            } else throw new Error(result.message);
+        } catch(e) { 
+            alert("❌ 讀取失敗，請確認連線。"); 
+        } finally { 
+            if(btn) { btn.disabled = false; btn.innerText = "📥 載入最新進度"; } 
+        }
+    }
+
+    function toggleCustomDiet() { document.getElementById('m_custom_diet_group').style.display = (document.getElementById('m_diet_select').value === 'custom') ? 'flex' : 'none'; }
+    function renderDietStats() {
+        const stats = {};
+        members.forEach(m => { const diet = m.dietaryRestrictions || '葷食'; stats[diet] = (stats[diet] || 0) + 1; });
+        document.getElementById('dietStatsArea').innerHTML = Object.entries(stats).map(([k, v]) => `<span style="background: white; padding: 4px 10px; border-radius: 12px; border: 1px solid #ccc;">${escapeHTML(k)}: <span style="color:var(--accent-color);">${v}</span> 人</span>`).join('');
+    }
+
+    // ★ 更新繳費統計 ★
+    function updatePaymentStats() {
+        let feePaid = 0;
+        let tipPaid = 0;
+        const total = members.length;
+
+        members.forEach(m => {
+            if (m.feeStatus === "已繳費") feePaid++;
+            if (m.tipStatus === "已繳費") tipPaid++;
+        });
+
+        const feeEl = document.getElementById('feeStatValue');
+        if (feeEl) {
+            feeEl.innerText = `${feePaid} / ${total}`;
+            document.getElementById('tipStatValue').innerText = `${tipPaid} / ${total}`;
+            document.getElementById('feeBar').style.width = total > 0 ? (feePaid / total * 100) + '%' : '0%';
+            document.getElementById('tipBar').style.width = total > 0 ? (tipPaid / total * 100) + '%' : '0%';
+        }
+    }
+
+    // ★ 更新單一團員繳費狀態並同步 ★
+    function updatePayment(memberId, field, value) {
+        const idx = members.findIndex(m => m.memberId === memberId);
+        if (idx > -1) {
+            members[idx][field] = value;
+            localStorage.setItem(KEYS.MEMBERS, JSON.stringify(members));
+            
+            // 獨立同步此團員資料到 Google Sheet
+            const dataToSync = { ...members[idx], "團費繳費": members[idx].feeStatus, "小費繳費": members[idx].tipStatus };
+            syncToCloud("members", dataToSync);
+            
+            renderMembers();
+        }
+    }
+
+    function renderMembers() {
+        renderDietStats();
+        updatePaymentStats(); // 確保每次渲染名單時，上方的統計也同步更新
+
+        const keyword = (document.getElementById('m_search')?.value || '').toLowerCase(); const sortType = document.getElementById('m_sort')?.value || 'default';
+        let filteredMembers = members.filter(m => (m.name || '').toLowerCase().includes(keyword) || (m.phone || '').includes(keyword) || (m.intlPhone || '').includes(keyword) || (m.passportNo || '').toLowerCase().includes(keyword));
+        if (sortType === 'name_asc') filteredMembers.sort((a, b) => { if (a.memberId === 'm0') return -1; if (b.memberId === 'm0') return 1; return (a.name || '').localeCompare(b.name || '', 'zh-TW'); });
+        else if (sortType === 'diet') filteredMembers.sort((a, b) => { if (a.memberId === 'm0') return -1; if (b.memberId === 'm0') return 1; return (a.dietaryRestrictions || '').localeCompare(b.dietaryRestrictions || '', 'zh-TW'); });
+        else filteredMembers.sort((a, b) => { if (a.memberId === 'm0') return -1; if (b.memberId === 'm0') return 1; return 0; });
+        
+        document.getElementById('memberListArea').innerHTML = filteredMembers.map((m) => { 
+            const isLeader = (m.memberId === 'm0'); 
+            
+            let clStatusText = "";
+            if (memberChecklistStatus[m.memberId] === "全部完成") { 
+                clStatusText = " <span style='color: #28a745; font-size: 0.8rem; font-weight: bold;'>[✅包裝完成]</span>"; 
+            } else if (memberChecklistStatus[m.memberId] === "部分完成") { 
+                clStatusText = " <span style='color: #d39e00; font-size: 0.8rem; font-weight: bold;'>[⏳部分完成]</span>"; 
+            }
+
+            const medLabel = i18nDict[currentLang] ? i18nDict[currentLang]['medical_history_label'] || '病史' : '病史';
+
+            return `<div class="data-card ${isLeader ? 'leader-card' : ''}">${isLeader ? '<div class="leader-badge">★ 專屬領隊卡 (自動同步)</div>' : ''}
+            <div class="card-row"><span class="card-label">姓名：</span><span>${escapeHTML(m.name)}${clStatusText}</span></div>
+            <div class="card-row"><span class="card-label">護照號碼：</span><span style="color:var(--accent-color); font-weight:bold;">${escapeHTML(m.passportNo) || '未填'}</span></div>
+            <div class="card-row"><span class="card-label">台灣電話：</span><span>${escapeHTML(m.phone)}</span></div>
+            <div class="card-row"><span class="card-label">國際電話：</span><span>${escapeHTML(m.intlPhone || '')}</span></div>
+            <div class="card-row"><span class="card-label">Email：</span><span>${escapeHTML(m.email || '')}</span></div>
+            <div class="card-row"><span class="card-label">飲食：</span><span>${escapeHTML(m.dietaryRestrictions)}</span></div>
+            <div class="card-row"><span class="card-label medical-highlight">${medLabel}：</span><span class="medical-highlight">${escapeHTML(m.medicalHistory) || (currentLang === 'zh' ? '無' : 'None')}</span></div>
+            <div class="card-row"><span class="card-label">緊急聯繫：</span><span>${escapeHTML(m.emergencyContactName)} / ${escapeHTML(m.emergencyContactPhone)}</span></div>
+            
+            <div class="payment-controls">
+                <div class="pay-box">
+                    <label>團費繳費</label>
+                    <select class="pay-select ${m.feeStatus === '已繳費' ? 'paid' : 'unpaid'}" onchange="updatePayment('${m.memberId}', 'feeStatus', this.value)">
+                        <option value="未繳費" ${m.feeStatus !== '已繳費' ? 'selected' : ''}>❌ 未繳費</option>
+                        <option value="已繳費" ${m.feeStatus === '已繳費' ? 'selected' : ''}>✅ 已繳費</option>
+                    </select>
+                </div>
+                <div class="pay-box">
+                    <label>司導小費</label>
+                    <select class="pay-select ${m.tipStatus === '已繳費' ? 'paid' : 'unpaid'}" onchange="updatePayment('${m.memberId}', 'tipStatus', this.value)">
+                        <option value="未繳費" ${m.tipStatus !== '已繳費' ? 'selected' : ''}>❌ 未繳費</option>
+                        <option value="已繳費" ${m.tipStatus === '已繳費' ? 'selected' : ''}>✅ 已繳費</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="text-align:right; margin-top: 10px;"><button class="action-btn btn-edit" onclick="editMember('${m.memberId}')">修改</button>${!isLeader ? `<button class="action-btn btn-delete" onclick="removeMember('${m.memberId}')">刪除</button>` : ''}</div></div>`; 
+        }).join('');
+    }
+    
+    function openMemberForm() { document.getElementById('m_id').value = ''; document.getElementById('m_name').value = ''; document.getElementById('m_passport').value = ''; document.getElementById('m_phone').value = ''; document.getElementById('m_intl_phone').value = ''; document.getElementById('m_email').value = ''; document.getElementById('m_diet_select').value = '葷食'; document.getElementById('m_diet_custom').value = ''; toggleCustomDiet(); document.getElementById('m_medical').value = ''; document.getElementById('m_emergency_name').value = ''; document.getElementById('m_emergency_phone').value = ''; document.getElementById('memberForm').style.display = 'block'; }
+    
+    function editMember(id) {
+        const m = members.find(x => x.memberId === id); if(!m) return;
+        document.getElementById('m_id').value = m.memberId; document.getElementById('m_name').value = m.name; document.getElementById('m_passport').value = m.passportNo || ''; document.getElementById('m_phone').value = m.phone; document.getElementById('m_intl_phone').value = m.intlPhone || ''; document.getElementById('m_email').value = m.email || '';
+        const presetDiets = ['葷食', '素食', '不吃牛', '不吃海鮮'];
+        if (presetDiets.includes(m.dietaryRestrictions)) { document.getElementById('m_diet_select').value = m.dietaryRestrictions; document.getElementById('m_diet_custom').value = ''; } else { document.getElementById('m_diet_select').value = 'custom'; document.getElementById('m_diet_custom').value = m.dietaryRestrictions || ''; }
+        toggleCustomDiet(); 
+        document.getElementById('m_medical').value = m.medicalHistory || '';
+        document.getElementById('m_emergency_name').value = m.emergencyContactName || ''; document.getElementById('m_emergency_phone').value = m.emergencyContactPhone || ''; document.getElementById('memberForm').style.display = 'block';
+    }
+    
+    function saveMember() {
+        const name = document.getElementById('m_name').value.trim(); const passport = document.getElementById('m_passport').value.trim(); const phone = document.getElementById('m_phone').value.trim(); const intlPhone = document.getElementById('m_intl_phone').value.trim(); const email = document.getElementById('m_email').value.trim(); const emPhone = document.getElementById('m_emergency_phone').value.trim(); const medical = document.getElementById('m_medical').value.trim();
+        if (!name) { alert("姓名不可為空！"); return; }
+        if (passport !== "" && !validatePassport(passport)) { alert("護照格式不正確！"); return; }
+        if (phone !== "" && !validatePhone(phone)) { alert("台灣電話格式不正確！"); return; }
+
+        const id = document.getElementById('m_id').value; 
+        const selectDiet = document.getElementById('m_diet_select').value; 
+        let finalDiet = (selectDiet === 'custom') ? document.getElementById('m_diet_custom').value : selectDiet; 
+        if (!finalDiet) finalDiet = '葷食';
+        
+        // 確保儲存時，不會覆蓋掉原有的繳費狀態，如果沒有則預設為 "未繳費"
+        const existingMember = id ? members.find(x => x.memberId === id) : null;
+        
+        const data = { 
+            memberId: id || 'm_'+Date.now(), name: name, passportNo: passport, phone: phone, intlPhone: intlPhone, email: email, dietaryRestrictions: finalDiet, medicalHistory: medical, emergencyContactName: document.getElementById('m_emergency_name').value.trim(), emergencyContactPhone: emPhone,
+            feeStatus: existingMember ? (existingMember.feeStatus || '未繳費') : '未繳費',
+            tipStatus: existingMember ? (existingMember.tipStatus || '未繳費') : '未繳費'
+        };
+        
+        if(id) { 
+            const idx = members.findIndex(x => x.memberId === id); members[idx] = data; 
+            if(id === 'm0') { emergencyData.leaderName = data.name; emergencyData.leaderTaiwanPhone = data.phone; emergencyData.leaderIntlPhone = data.intlPhone; localStorage.setItem(KEYS.EMERGENCY, JSON.stringify(emergencyData)); }
+        } else { members.push(data); }
+        
+        localStorage.setItem(KEYS.MEMBERS, JSON.stringify(members)); closeForm('memberForm'); renderMembers(); syncSenderDropdown(); if(currentTab === 'rollcall') renderRollCall();
+
+        // 加上中文標題，確保 Google Sheets 也能順利寫入
+        const dataToSync = { ...data, "團費繳費": data.feeStatus, "小費繳費": data.tipStatus };
+        syncToCloud("members", dataToSync);
+    }
+    
+    function removeMember(id) { if(id === 'm0') return; if(confirm('確定刪除？')) { members = members.filter(m => m.memberId !== id); localStorage.setItem(KEYS.MEMBERS, JSON.stringify(members)); renderMembers(); syncSenderDropdown(); if(currentTab === 'rollcall') renderRollCall(); } }
+
+
+    // ==========================================
+    // 點名 (Rollcall)
+    // ==========================================
+    function initRollCallControls() { const dateInput = document.getElementById('rc_date_select'); if(!dateInput.value) { const today = new Date(); dateInput.value = today.toISOString().split('T')[0]; } updateRollCallSessionOptions(); }
+    function updateRollCallSessionOptions() {
+        const date = document.getElementById('rc_date_select').value; const sel = document.getElementById('rc_session_select'); const currentVal = sel.value;
+        let optionsHTML = `<option value="早上用餐">早上用餐</option><option value="上午上車">上午上車</option><option value="中午用餐">中午用餐</option><option value="下午上車">下午上車</option><option value="晚上用餐">晚上用餐</option><option value="晚上回房">晚上回房</option><option value="自費行程">自費行程</option>`;
+        const dayMeetingPoints = itinerary.filter(i => i.date === date && i.isMeetingPoint);
+        if (dayMeetingPoints.length > 0) { optionsHTML += `<optgroup label="📍 行程集合點 (自動連動)">`; dayMeetingPoints.forEach(i => { const optText = `${i.time} - ${i.title} (${i.location})`; optionsHTML += `<option value="${optText}">${optText}</option>`; }); optionsHTML += `</optgroup>`; }
+        optionsHTML += `<option value="custom">-- 自訂場次 --</option>`; sel.innerHTML = optionsHTML;
+        if (Array.from(sel.options).some(o => o.value === currentVal)) sel.value = currentVal; else sel.value = "早上用餐";
+        handleSessionTypeChange();
+    }
+    function changeRollCallDate() { updateRollCallSessionOptions(); }
+    function handleSessionTypeChange() { const type = document.getElementById('rc_session_select').value; document.getElementById('rc_custom_session_group').style.display = (type === 'custom') ? 'flex' : 'none'; changeRollCallSession(); }
+    function changeRollCallSession() { const date = document.getElementById('rc_date_select').value; let session = document.getElementById('rc_session_select').value; if(session === 'custom') session = document.getElementById('rc_custom_session').value.trim() || '自訂場次'; currentRollCallId = `${date}_${session}`; if (!rollcallState[currentRollCallId]) rollcallState[currentRollCallId] = {}; renderRollCall(); }
+    function renderRollCall() {
+        if(!currentRollCallId) return; let count = 0; const currentSessionData = rollcallState[currentRollCallId];
+        document.getElementById('rollcallArea').innerHTML = members.map(m => { const isPresent = currentSessionData[m.memberId] || false; if(isPresent) count++; return `<div class="rc-card ${isPresent ? 'present' : 'absent'}" onclick="toggleRollCall('${m.memberId}')"><span class="rc-name">${escapeHTML(m.name)}</span><div class="rc-indicator"></div></div>`; }).join(''); 
+        document.getElementById('rc-stats').textContent = `已到：${count} / 總計：${members.length}`;
+    }
+    function toggleRollCall(id) { if(!currentRollCallId) return; rollcallState[currentRollCallId][id] = !rollcallState[currentRollCallId][id]; localStorage.setItem(KEYS.ROLLCALL, JSON.stringify(rollcallState)); renderRollCall(); }
+    function resetCurrentRollCall() { if(!currentRollCallId) return; if(confirm('確定將「本場次」點名紀錄全部歸零？')) { rollcallState[currentRollCallId] = {}; localStorage.setItem(KEYS.ROLLCALL, JSON.stringify(rollcallState)); renderRollCall(); } }
+
+    async function submitRollCallToCloud() {
+        const btn = document.getElementById('btn_submit_rollcall');
+        if(btn) { btn.disabled = true; btn.innerText = "⏳ 正在同步至雲端..."; }
+        try {
+            const dateVal = document.getElementById('rc_date_select').value;
+            if(!dateVal) throw new Error("請先選擇點名日期！");
+            let sessionType = document.getElementById('rc_session_select').value;
+            if(sessionType === 'custom') sessionType = document.getElementById('rc_custom_session').value || "自訂場次";
+            if(!currentRollCallId) throw new Error("請選擇點名場次");
+
+            const presentMap = rollcallState[currentRollCallId] || {};
+            const rcId = "RC-" + Date.now();
+            const ts = new Date().toLocaleString('zh-TW', { hour12: false });
+
+            const payloadData = members.map(m => {
+                const isPresent = presentMap[m.memberId] || false;
+                return {
+                    rollcallId: rcId,
+                    timestamp: ts,
+                    date: dateVal,
+                    title: sessionType,
+                    memberId: m.memberId,
+                    name: m.name,
+                    status: isPresent ? "已到" : "未到",
+                    note: "" 
+                };
+            });
+
+            await syncToCloud("rollcall", payloadData);
+            alert("✅ 點名明細雲端同步成功！請查看試算表。");
+        } catch (error) { 
+            alert("❌ 上傳失敗: " + error.message); 
+        } finally { 
+            if(btn) { btn.disabled = false; btn.innerText = "📤 上傳本場點名紀錄至雲端"; } 
+        }
+    }
+
+    // ==========================================
+    // 行程 (Itinerary)
+    // ==========================================
+    function toggleCustomTitle() { document.getElementById('i_custom_title_group').style.display = (document.getElementById('i_title_select').value === 'custom') ? 'flex' : 'none'; }
+    function toggleCustomLocation() { document.getElementById('i_custom_location_group').style.display = (document.getElementById('i_location_select').value === 'custom') ? 'flex' : 'none'; }
+    function renderItineraryDayTabs() { const tabs = document.getElementById('itineraryDayTabs'); let days = [...new Set(itinerary.map(i => i.day || '1'))].sort((a,b) => a-b); if(days.length === 0) days = ['1']; if(!days.includes(currentItineraryDay)) currentItineraryDay = days[0]; tabs.innerHTML = days.map(d => `<div class="day-tab ${d === currentItineraryDay ? 'active' : ''}" onclick="switchItineraryDay('${d}')">第 ${d} 天</div>`).join(''); document.getElementById('currentDayTitle').textContent = `第 ${currentItineraryDay} 天行程`; }
+    function switchItineraryDay(day) { currentItineraryDay = day; renderItinerary(); }
+    
+    function renderItinerary() { 
+        renderItineraryDayTabs(); 
+        const curIt = itinerary.filter(i => (i.day || '1') === currentItineraryDay).sort((a,b) => a.time.localeCompare(b.time)); 
+        document.getElementById('itineraryArea').innerHTML = curIt.length ? curIt.map(i => `<div class="timeline-item ${i.isMeetingPoint ? 'mt-point' : ''}"><div style="font-weight:bold; color:var(--primary-color);">${i.date ? escapeHTML(i.date) + ' ' : ''}${escapeHTML(formatTimeStr(i.time))} - ${escapeHTML(i.title)} ${i.isMeetingPoint ? '📍 (已連動點名)' : ''}</div><div style="font-size:0.8rem; color:#666">地點：${escapeHTML(i.location)}</div><div style="margin:5px 0">${escapeHTML(i.description || i.desc)}</div>${i.reminders ? `<div style="color:var(--alert-border); font-size:0.8rem">⚠️ ${escapeHTML(i.reminders)}</div>` : ''}<div style="text-align:right"><button class="action-btn btn-edit" onclick="editItinerary('${i.itemId}')">修改</button><button class="action-btn btn-delete" onclick="removeItinerary('${i.itemId}')">刪除</button></div></div>`).join('') : '<div style="text-align:center; padding:20px; color:#999;">本日尚無行程</div>'; 
+    }
+
+    function openItineraryForm() { document.getElementById('i_id').value = ''; document.getElementById('i_day').value = currentItineraryDay; document.getElementById('i_date').value = new Date().toISOString().split('T')[0]; document.getElementById('i_time').value = '08:00'; document.getElementById('i_title_select').value = '吃早餐'; document.getElementById('i_title_custom').value = ''; document.getElementById('i_location_select').value = '飯店大廳'; document.getElementById('i_location_custom').value = ''; document.getElementById('i_desc').value = ''; document.getElementById('i_reminders').value = ''; document.getElementById('i_isMeeting').checked = false; toggleCustomTitle(); toggleCustomLocation(); document.getElementById('itineraryForm').style.display = 'block'; }
+    function editItinerary(id) { 
+        const i = itinerary.find(x => x.itemId === id); document.getElementById('i_id').value = i.itemId; document.getElementById('i_day').value = i.day || '1'; document.getElementById('i_date').value = i.date || ''; document.getElementById('i_time').value = i.time; document.getElementById('i_desc').value = i.description || i.desc || ''; document.getElementById('i_reminders').value = i.reminders || ''; document.getElementById('i_isMeeting').checked = i.isMeetingPoint; 
+        const pt = ['吃早餐', '吃中餐', '吃晚餐', '自費行程']; if (pt.includes(i.title)) { document.getElementById('i_title_select').value = i.title; document.getElementById('i_title_custom').value = ''; } else { document.getElementById('i_title_select').value = 'custom'; document.getElementById('i_title_custom').value = i.title; } 
+        const pl = ['飯店大廳', '飯店停車場', '飯店餐廳', '景點大門入口處', '景點大門出口處', '景點停車場']; if (pl.includes(i.location)) { document.getElementById('i_location_select').value = i.location; document.getElementById('i_location_custom').value = ''; } else { document.getElementById('i_location_select').value = 'custom'; document.getElementById('i_location_custom').value = i.location; } 
+        toggleCustomTitle(); toggleCustomLocation(); document.getElementById('itineraryForm').style.display = 'block'; 
+    }
+    
+    function saveItinerary() { 
+        const id = document.getElementById('i_id').value; 
+        const selectTitle = document.getElementById('i_title_select').value; const finalTitle = (selectTitle === 'custom') ? document.getElementById('i_title_custom').value : selectTitle; 
+        const selectLoc = document.getElementById('i_location_select').value; const finalLocation = (selectLoc === 'custom') ? document.getElementById('i_location_custom').value : selectLoc; 
+        
+        const data = { 
+            itemId: id || 'it_' + Date.now(), day: document.getElementById('i_day').value, date: document.getElementById('i_date').value, time: document.getElementById('i_time').value, title: finalTitle, location: finalLocation, description: document.getElementById('i_desc').value, reminders: document.getElementById('i_reminders').value, isMeetingPoint: document.getElementById('i_isMeeting').checked 
+        }; 
+        
+        const isNew = !id; let oldData = isNew ? null : itinerary.find(x => x.itemId === id);
+        if(id) { const idx = itinerary.findIndex(x => x.itemId === id); itinerary[idx] = data; } else { itinerary.push(data); } 
+
+        if (data.isMeetingPoint) {
+            if (isNew || !oldData.isMeetingPoint || oldData.time !== data.time || oldData.location !== data.location || oldData.date !== data.date) {
+                const leader = members.find(m => m.memberId === 'm0') || {name: '領隊'};
+                const noticeText = `📍 【行程集合提醒】\n日期：${data.date}\n時間：${formatTimeStr(data.time)}\n地點：${data.location}\n行程：${data.title}${data.reminders ? '\n\n⚠️ 提醒：'+data.reminders : ''}`;
+                messages.push({ messageId: 'msg_' + Date.now(), senderName: leader.name, textContent: noticeText, timestamp: Date.now(), messageType: 'notice' });
+                localStorage.setItem(KEYS.MESSAGES, JSON.stringify(messages));
+                if (currentTab === 'chat') renderMessages();
+            }
+        }
+        localStorage.setItem(KEYS.ITINERARY, JSON.stringify(itinerary)); currentItineraryDay = data.day; closeForm('itineraryForm'); renderItinerary(); 
+
+        const cloudData = {
+            itineraryId: data.itemId,
+            itemId: data.itemId,
+            dayNumber: data.day,
+            day: data.day,
+            date: data.date,
+            time: data.time,
+            title: data.title,
+            description: data.description,
+            location: data.location,
+            contactInfo: "", 
+            notes: data.reminders,
+            reminders: data.reminders,
+            isMeetingPoint: data.isMeetingPoint
+        };
+        syncToCloud("itinerary", cloudData);
+    }
+    function removeItinerary(id) { if(confirm('刪除？')) { itinerary = itinerary.filter(i => i.itemId !== id); localStorage.setItem(KEYS.ITINERARY, JSON.stringify(itinerary)); renderItinerary(); } }
+
+    // ==========================================
+    // 帳務 (Finance)
+    // ==========================================
+    function renderFinance() { let totals = { public: {}, advance: {} }; financeRecords.sort((a,b) => new Date(`${b.date}T${b.time}`) - new Date(`${a.date}T${a.time}`)); document.getElementById('financeArea').innerHTML = financeRecords.map(f => { const isPub = f.type === 'public'; const cur = f.currency || 'TWD'; const amt = parseFloat(f.amount || 0); const typeKey = isPub ? 'public' : 'advance'; totals[typeKey][cur] = (totals[typeKey][cur] || 0) + amt; return `<div class="data-card"><div class="f-datetime">📅 ${escapeHTML(f.date)} ⏰ ${escapeHTML(f.time)}</div><div style="display:flex; justify-content:space-between; font-weight:bold;"><span>${escapeHTML(f.title)}</span><span>${escapeHTML(cur)} ${amt}</span></div><div style="font-size:0.85rem; margin-top:5px;"><span class="f-tag ${isPub?'tag-public':'tag-advance'}">${isPub?'公費':'代墊'}</span>備註：${escapeHTML(f.target)}</div><div style="text-align:right"><button class="action-btn btn-edit" onclick="editFinance('${f.id}')">修改</button><button class="action-btn btn-delete" onclick="removeFinance('${f.id}')">刪除</button></div></div>`; }).join(''); const fmt = (obj) => Object.keys(obj).map(k => `<div class="currency-row">${escapeHTML(k)} <b>${obj[k]}</b></div>`).join('') || '$0'; document.getElementById('f-total-public').innerHTML = fmt(totals.public); document.getElementById('f-total-advance').innerHTML = fmt(totals.advance); }
+    function openFinanceForm() { document.getElementById('f_id').value = ''; const now = new Date(); document.getElementById('f_date').value = now.toLocaleDateString('en-CA'); document.getElementById('f_time').value = now.toTimeString().substring(0,5); document.getElementById('f_title').value = ''; document.getElementById('f_amount').value = ''; document.getElementById('financeForm').style.display = 'block'; }
+    function editFinance(id) { const f = financeRecords.find(x => x.id === id); document.getElementById('f_id').value = f.id; document.getElementById('f_date').value = f.date; document.getElementById('f_time').value = f.time; document.getElementById('f_type').value = f.type; document.getElementById('f_currency').value = f.currency; document.getElementById('f_title').value = f.title; document.getElementById('f_amount').value = f.amount; document.getElementById('f_target').value = f.target; document.getElementById('financeForm').style.display = 'block'; }
+    
+    function saveFinance() { 
+        const id = document.getElementById('f_id').value; 
+        const data = { 
+            id: id || 'f_'+Date.now(), 
+            date: document.getElementById('f_date').value, 
+            time: document.getElementById('f_time').value, 
+            type: document.getElementById('f_type').value, 
+            currency: document.getElementById('f_currency').value, 
+            title: document.getElementById('f_title').value, 
+            amount: document.getElementById('f_amount').value, 
+            target: document.getElementById('f_target').value 
+        }; 
+        
+        if(id) { const idx = financeRecords.findIndex(x => x.id === id); financeRecords[idx] = data; } else { financeRecords.push(data); } 
+        localStorage.setItem(KEYS.FINANCE, JSON.stringify(financeRecords)); closeForm('financeForm'); renderFinance(); 
+
+        const cloudData = {
+            accountingId: data.id,
+            date: data.date,
+            type: data.type === 'public' ? '團體公費' : '個人代墊',
+            category: "一般",
+            item: data.title,
+            amount: data.amount,
+            currency: data.currency,
+            receiptNo: "",
+            paidBy: data.target,
+            note: data.target
+        };
+        syncToCloud("accounting", cloudData);
+    }
+    function removeFinance(id) { if(confirm('刪除？')) { financeRecords = financeRecords.filter(f => f.id !== id); localStorage.setItem(KEYS.FINANCE, JSON.stringify(financeRecords)); renderFinance(); } }
+
+    // ==========================================
+    // 設定與備份 (Settings)
+    // ==========================================
+    function exportJSONBackup() { const backupData = { version: '1.0', exportDate: new Date().toISOString(), data: { messages, members, itinerary, rollcall: rollcallState, finance: financeRecords, emergency: emergencyData } }; const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData)); const dlAnchorElem = document.createElement('a'); dlAnchorElem.setAttribute("href", dataStr); dlAnchorElem.setAttribute("download", `TourBackup_${new Date().toISOString().slice(0,10)}.json`); dlAnchorElem.click(); }
+    function importJSONBackup() { const file = document.getElementById('backupFileInput').files[0]; if (!file) return; if (confirm("確定覆蓋所有資料？")) { const reader = new FileReader(); reader.onload = function(e) { try { const imported = JSON.parse(e.target.result).data; messages = imported.messages || []; members = imported.members || []; itinerary = imported.itinerary || []; rollcallState = imported.rollcall || {}; financeRecords = imported.finance || []; emergencyData = imported.emergency || { compName: '', compPhone: '', leaderName: '', leaderTaiwanPhone: '', leaderIntlPhone: '', guideName: '', guidePhone: '', driverName: '', driverPhone: '', busNumber: '', airportDate: '', airportTime: '', airportLocation: '桃園國際機場第1航廈' }; localStorage.setItem(KEYS.MESSAGES, JSON.stringify(messages)); localStorage.setItem(KEYS.MEMBERS, JSON.stringify(members)); localStorage.setItem(KEYS.ITINERARY, JSON.stringify(itinerary)); localStorage.setItem(KEYS.ROLLCALL, JSON.stringify(rollcallState)); localStorage.setItem(KEYS.FINANCE, JSON.stringify(financeRecords)); localStorage.setItem(KEYS.EMERGENCY, JSON.stringify(emergencyData)); alert("已還原！"); switchTab('chat', '旅行團內部通訊'); } catch(err) { alert("匯入失敗，請檢查檔案格式！"); } }; reader.readAsText(file); } }
+    function exportCSV(type) { let csv = "\uFEFF"; if (type === 'members') { csv += "姓名,護照,台灣電話,國際電話,Email,飲食,病史,緊急聯絡,緊急電話\n"; members.forEach(m => csv += `"${m.name}","${m.passportNo}","${m.phone}","${m.intlPhone || ''}","${m.email || ''}","${m.dietaryRestrictions}","${m.medicalHistory || ''}","${m.emergencyContactName}","${m.emergencyContactPhone}"\n`); } else { csv += "日期,時間,類型,幣別,項目,金額,備註\n"; financeRecords.forEach(f => csv += `"${f.date}","${f.time}","${f.type}","${f.currency}","${f.title}","${f.amount}","${f.target}"\n`); } const link = document.createElement("a"); link.setAttribute("href", URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }))); link.setAttribute("download", `${type}.csv`); link.click(); }
+    
+    // ★ 結團 / 開啟新團：送出 clearAll 動作 ★
+    async function clearAllDataForNewTour() { 
+        if (confirm("⚠️ 嚴重警告！\n\n這將會清除手機內所有資料，並且【同步清空雲端 Google Sheet 的所有紀錄】！\n\n確定要迎接新團嗎？")) { 
+            if (confirm("資料清除後將無法復原。最後確認：真的要清除嗎？")) { 
+                
+                const btn = document.querySelector('button[onclick="clearAllDataForNewTour()"]');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = "⏳ 正在清空雲端資料...";
+                btn.disabled = true;
+
+                try {
+                    if (API_URL && API_URL !== "請填入您的_GAS_網址") {
+                        const response = await fetch(API_URL, {
+                            method: "POST",
+                            redirect: "follow",
+                            headers: { "Content-Type": "text/plain;charset=utf-8" },
+                            body: JSON.stringify({ action: "clearAll" })
+                        });
+                        const result = await response.json();
+                        if(result.status !== "success") {
+                            console.error("雲端清空失敗:", result.message);
+                        }
+                    }
+                } catch (error) {
+                    console.error("連線錯誤:", error);
+                }
+
+                messages = []; 
+                members = [{ memberId: 'm0', name: '領隊', passportNo: '', phone: '', intlPhone: '', email: '', dietaryRestrictions: '葷食', medicalHistory: '', emergencyContactName: '公司', emergencyContactPhone: '', feeStatus: '未繳費', tipStatus: '未繳費' }]; 
+                itinerary = []; rollcallState = {}; financeRecords = []; 
+                emergencyData = { compName: '', compPhone: '', leaderName: '領隊', leaderTaiwanPhone: '', leaderIntlPhone: '', guideName: '', guidePhone: '', driverName: '', driverPhone: '', busNumber: '', airportDate: '', airportTime: '', airportLocation: '桃園國際機場第1航廈' };
+                currentItineraryDay = '1'; currentRollCallId = "";
+                
+                localStorage.setItem(KEYS.MESSAGES, JSON.stringify(messages)); 
+                localStorage.setItem(KEYS.MEMBERS, JSON.stringify(members)); 
+                localStorage.setItem(KEYS.ITINERARY, JSON.stringify(itinerary)); 
+                localStorage.setItem(KEYS.ROLLCALL, JSON.stringify(rollcallState)); 
+                localStorage.setItem(KEYS.FINANCE, JSON.stringify(financeRecords)); 
+                localStorage.setItem(KEYS.EMERGENCY, JSON.stringify(emergencyData)); 
+                localStorage.removeItem('leader_checklist'); 
+                
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+
+                alert("✅ 雲端與本機資料皆已徹底清除！準備迎接新團！"); 
+                location.reload(); 
+            } 
+        } 
+    }
+
+    // ==========================================
+    // 模組：緊急求助與設定 (Emergency)
+    // ==========================================
+    function initEmergency() { 
+        document.getElementById('em_input_airport_date').value = emergencyData.airportDate || ''; 
+        document.getElementById('em_input_airport_time').value = emergencyData.airportTime || ''; 
+        document.getElementById('em_input_airport_location').value = emergencyData.airportLocation || '桃園國際機場第1航廈'; 
+        
+        document.getElementById('em_input_comp_name').value = emergencyData.compName || ''; 
+        document.getElementById('em_input_comp_phone').value = emergencyData.compPhone || ''; 
+        document.getElementById('em_input_leader_name').value = emergencyData.leaderName || ''; 
+        document.getElementById('em_input_leader_taiwan_phone').value = emergencyData.leaderTaiwanPhone || ''; 
+        document.getElementById('em_input_leader_intl_phone').value = emergencyData.leaderIntlPhone || ''; 
+        document.getElementById('em_input_guide_name').value = emergencyData.guideName || ''; 
+        document.getElementById('em_input_guide_phone').value = emergencyData.guidePhone || ''; 
+        document.getElementById('em_input_driver_name').value = emergencyData.driverName || ''; 
+        document.getElementById('em_input_driver_phone').value = emergencyData.driverPhone || ''; 
+        document.getElementById('em_input_bus_number').value = emergencyData.busNumber || ''; 
+        toggleEmergencyView(); 
+    }
+    
+    function toggleEmergencyView() { 
+        const selected = document.getElementById('em_category_select').value; 
+        document.querySelectorAll('.em-view').forEach(el => el.classList.remove('active')); 
+        document.getElementById('view_' + selected).classList.add('active'); 
+    }
+    
+   // ★★★ 核心寫入函式：負責同步到 Google Sheet 並自動發布機場公告 ★★★
+    function saveEmergencyData() { 
+        const leaderNameVal = document.getElementById('em_input_leader_name').value.trim() || '領隊';
+        const leaderTaiwanPhoneVal = document.getElementById('em_input_leader_taiwan_phone').value.trim();
+        const leaderIntlPhoneVal = document.getElementById('em_input_leader_intl_phone').value.trim();
+        
+        const newAirportDate = document.getElementById('em_input_airport_date').value;
+        const newAirportTime = document.getElementById('em_input_airport_time').value;
+        const newAirportLoc = document.getElementById('em_input_airport_location').value;
+
+        // 1. 自動發布「機場集合資訊」系統公告邏輯
+        const oldData = JSON.parse(localStorage.getItem(KEYS.EMERGENCY)) || {};
+        const isAirportFilled = newAirportDate && newAirportTime && newAirportLoc;
+        const isAirportChanged = (newAirportDate !== oldData.airportDate) || 
+                                 (newAirportTime !== oldData.airportTime) || 
+                                 (newAirportLoc !== oldData.airportLocation);
+
+        if (isAirportFilled && isAirportChanged) {
+            // 組合公告文字
+            const noticeText = `✈️ 【機場集合資訊】\n日期：${newAirportDate}\n時間：${formatTimeStr(newAirportTime)}\n地點：${newAirportLoc}`;
+            
+            // 產生新訊息物件
+            const newNoticeMsg = {
+                messageId: 'msg_' + Date.now(),
+                senderName: leaderNameVal,
+                textContent: noticeText,
+                timestamp: new Date().toLocaleString('zh-TW', { hour12: false }),
+                messageType: 'notice'
+            };
+
+            // 加入通訊清單中 (push 放最新，確保打開聊天室第一眼看到)
+            messages.push(newNoticeMsg);
+            localStorage.setItem(KEYS.MESSAGES, JSON.stringify(messages));
+            
+            // 同步將這則公告上傳至雲端的 messages 分頁
+            syncToCloud("messages", newNoticeMsg);
+
+            // 如果目前正好停留在通訊分頁，立即更新畫面
+            if (currentTab === 'chat') renderMessages();
+        }
+
+        // 2. 儲存至本機端 (LocalStorage)
+        emergencyData = { 
+            compName: document.getElementById('em_input_comp_name').value.trim(), 
+            compPhone: document.getElementById('em_input_comp_phone').value.trim(), 
+            leaderName: leaderNameVal, 
+            leaderTaiwanPhone: leaderTaiwanPhoneVal,
+            leaderIntlPhone: leaderIntlPhoneVal,
+            guideName: document.getElementById('em_input_guide_name').value.trim(),
+            guidePhone: document.getElementById('em_input_guide_phone').value.trim(),
+            driverName: document.getElementById('em_input_driver_name').value.trim(),
+            driverPhone: document.getElementById('em_input_driver_phone').value.trim(),
+            busNumber: document.getElementById('em_input_bus_number').value.trim(),
+            airportDate: newAirportDate,
+            airportTime: newAirportTime,
+            airportLocation: newAirportLoc
+        }; 
+        localStorage.setItem(KEYS.EMERGENCY, JSON.stringify(emergencyData)); 
+        
+        // 同步更新領隊的個人資料卡
+        let leaderMember = members.find(m => m.memberId === 'm0');
+        if (leaderMember) {
+            leaderMember.name = leaderNameVal; leaderMember.phone = leaderTaiwanPhoneVal; leaderMember.intlPhone = leaderIntlPhoneVal;
+        } else {
+            members.unshift({ memberId: 'm0', name: leaderNameVal, passportNo: '', phone: leaderTaiwanPhoneVal, intlPhone: leaderIntlPhoneVal, email: '', dietaryRestrictions: '葷食', medicalHistory: '', emergencyContactName: '公司', emergencyContactPhone: '' });
+        }
+        localStorage.setItem(KEYS.MEMBERS, JSON.stringify(members));
+
+        // 3. 打包上傳至 Google Sheet (維持原有的防呆標題對齊)
+        const cloudData = {
+            timestamp: new Date().toLocaleString('zh-TW', { hour12: false }),
+            compName: emergencyData.compName,
+            companyName: emergencyData.compName,
+            compPhone: emergencyData.compPhone,
+            LeaderName: emergencyData.leaderName,
+            leaderName: emergencyData.leaderName,
+            LeaderTaiwanPhone: emergencyData.leaderTaiwanPhone,
+            leaderTaiwanPhone: emergencyData.leaderTaiwanPhone,
+            leaderlntPhone: emergencyData.leaderIntlPhone,
+            leaderIntlPhone: emergencyData.leaderIntlPhone,
+            guideName: emergencyData.guideName,
+            guidePhone: emergencyData.guidePhone,
+            drivePhone: emergencyData.driverPhone,
+            driverPhone: emergencyData.driverPhone,
+            driverName: emergencyData.driverName,
+            busNumber: emergencyData.busNumber,
+            airportDate: emergencyData.airportDate,
+            airportTime: emergencyData.airportTime,
+            airportLocation: emergencyData.airportLocation
+        };
+
+        syncToCloud("emergency", cloudData);
+    }
+    function changePassword() { 
+        const currentStoredPwd = localStorage.getItem('leader_custom_password') || '123456'; 
+        const oldPwdInput = prompt("為了安全，請先輸入目前的密碼："); 
+        if (oldPwdInput === null) return; 
+        if (oldPwdInput !== currentStoredPwd) { alert("❌ 原密碼輸入錯誤，修改失敗！"); return; } 
+        const newPwd = prompt("請輸入新的啟動密碼："); 
+        if (newPwd === null || newPwd.trim() === "") { alert("❌ 密碼不可為空白！"); return; } 
+        localStorage.setItem('leader_custom_password', newPwd.trim()); 
+        alert("✅ 密碼修改成功！下次開啟程式請使用新密碼。\n(系統將自動備份新密碼至雲端)");
+        syncSettingsToCloud();
+    }
+    
+    function logoutSystem() {
+        if (confirm("確定要登出並鎖定系統嗎？")) {
+            sessionStorage.removeItem('tour_leader_logged_in');
+            location.reload(); 
+        }
+    }
+
+    function clearAppCache() {
+        if(confirm("這將清除手機暫存，但不會刪除您已儲存的資料，確定要清除嗎？")) { alert("快取已清除"); }
+    }
+
+    // ★ 檢查表欄位強制對齊修復 ★
+    (function() {
+        console.log("Checklist Field Alignment Fix Active");
+        window.forceSyncChecklist = async function() {
+            const localData = JSON.parse(localStorage.getItem('leader_checklist')) || [];
+            if (localData.length === 0) { alert("⚠️ 檢查表目前沒有資料可同步。"); return; }
+            alert("⏳ 正在精準對齊 category 與 itemText 欄位並傳送至雲端...");
+            let count = 0;
+            for (const item of localData) {
+                const payload = {
+                    timestamp: new Date().toLocaleString('zh-TW', { hour12: false }),
+                    category: item.category || "一般",
+                    itemText: item.text || item.itemText || "未命名項目",
+                    status: item.checked ? "✅ 已完成" : "⭕ 待辦中"
+                };
+                const success = await syncToCloud("checklist", payload);
+                if (success) count++;
+            }
+            alert(`✅ 同步成功！已傳送 ${count} 筆正確格式資料。`);
+        };
+    })();
+
+    initApp();
+</script>
+</body>
+</html>
